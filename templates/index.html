@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introductie Personal Training — Physicum</title>
+    <link rel="stylesheet" href="/static/style.css">
+
+    {% if meta_pixel_id %}
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{ meta_pixel_id }}');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id={{ meta_pixel_id }}&ev=PageView&noscript=1"/></noscript>
+    {% endif %}
+</head>
+<body>
+    <div id="app">
+        <!-- Stappen indicator -->
+        <div class="steps-bar">
+            <div class="step-dot" data-step="0"><span>1</span></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="1"><span>2</span></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="2"><span>3</span></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="3"><span>4</span></div>
+        </div>
+        <div class="steps-labels">
+            <span>1e Training</span>
+            <span>2e Training</span>
+            <span>3e Training</span>
+            <span>Overzicht</span>
+        </div>
+
+        <!-- Stap 0, 1, 2: Trainingen kiezen -->
+        <div class="wizard-step" data-step="0">
+            <h2>1e Introductie training</h2>
+            <p class="step-subtitle">Kies een datum en tijd voor je eerste sessie</p>
+            <div class="session-picker" data-listing-id="49005" data-step="0"></div>
+        </div>
+
+        <div class="wizard-step" data-step="1" style="display:none">
+            <div class="selected-summary" id="summary-before-1"></div>
+            <h2>2e Introductie training</h2>
+            <p class="step-subtitle">Kies een datum en tijd voor je tweede sessie</p>
+            <div class="session-picker" data-listing-id="49003" data-step="1"></div>
+        </div>
+
+        <div class="wizard-step" data-step="2" style="display:none">
+            <div class="selected-summary" id="summary-before-2"></div>
+            <h2>3e Introductie training</h2>
+            <p class="step-subtitle">Kies een datum en tijd voor je derde sessie</p>
+            <div class="session-picker" data-listing-id="49004" data-step="2"></div>
+        </div>
+
+        <!-- Stap 3: Overzicht -->
+        <div class="wizard-step" data-step="3" style="display:none">
+            <h2>Overzicht</h2>
+            <p class="step-subtitle">Controleer je gekozen trainingen</p>
+
+            <div class="overview-cards" id="overview-cards"></div>
+
+            <div class="price-box">
+                <span class="price-label">Introductie pakket</span>
+                <span class="price-amount">&euro;99</span>
+            </div>
+
+            <p class="price-note">Je ontvangt een bevestiging per e-mail. Betaling volgt na de eerste sessie.</p>
+
+            <button class="btn btn-confirm" id="btn-confirm" onclick="submitBooking()">
+                Trainingen bevestigen
+            </button>
+        </div>
+
+        <!-- Stap 4: Succes -->
+        <div class="wizard-step" data-step="4" style="display:none">
+            <div class="success-icon">&#10003;</div>
+            <h2>Je trainingen zijn aangevraagd!</h2>
+            <p class="step-subtitle">We nemen zo snel mogelijk contact met je op om je boekingen te bevestigen.</p>
+            <div id="success-details"></div>
+        </div>
+
+        <!-- Navigatie -->
+        <div class="nav-buttons" id="nav-buttons">
+            <button class="btn btn-back" id="btn-back" onclick="prevStep()" style="display:none">Terug</button>
+            <button class="btn btn-next" id="btn-next" onclick="nextStep()" disabled>Verder</button>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loading" style="display:none">
+            <div class="spinner"></div>
+            <p>Even geduld...</p>
+        </div>
+    </div>
+
+    <script>
+        // Listing configuratie vanuit Flask
+        const LISTINGS = {{ listings | tojson }};
+    </script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

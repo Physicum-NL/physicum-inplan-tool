@@ -1,0 +1,580 @@
+/* Introductie Inplan Tool — Physicum branding */
+
+:root {
+    --bg: #1a1a1a;
+    --bg-card: #242424;
+    --bg-hover: #2e2e2e;
+    --gold: #c5993e;
+    --gold-light: #d4ad5a;
+    --gold-dark: #a67c2e;
+    --text: #f0f0f0;
+    --text-muted: #999;
+    --text-dim: #666;
+    --green: #4caf50;
+    --green-dot: #66bb6a;
+    --border: #333;
+    --radius: 12px;
+    --radius-sm: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+#app {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 24px 16px 24px;
+}
+
+/* ─── Stappen indicator ─── */
+
+.steps-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 8px;
+}
+
+.step-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+
+.step-dot.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #fff;
+}
+
+.step-dot.completed {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+
+.step-line {
+    height: 2px;
+    flex: 1;
+    background: var(--border);
+    transition: background 0.3s;
+}
+
+.step-line.completed {
+    background: var(--green);
+}
+
+.steps-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+/* ─── Wizard stappen ─── */
+
+.wizard-step {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: var(--text);
+}
+
+.step-subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+/* ─── Sessie picker (kalender + slots naast elkaar) ─── */
+
+.session-picker {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* ─── Kalender ─── */
+
+.calendar {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 14px;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.calendar-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.calendar-nav {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.calendar-nav:hover {
+    background: var(--bg-hover);
+    border-color: var(--gold);
+}
+
+.calendar-nav:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+}
+
+.calendar-grid .day-header {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    padding: 2px 0;
+}
+
+.calendar-day {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    border-radius: 50%;
+    cursor: default;
+    color: var(--text-dim);
+    transition: all 0.15s;
+}
+
+.calendar-day.available {
+    color: var(--text);
+    cursor: pointer;
+}
+
+.calendar-day.available:hover {
+    background: var(--bg-hover);
+}
+
+.calendar-day.available::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--green-dot);
+}
+
+.calendar-day.selected {
+    background: var(--gold);
+    color: #fff;
+}
+
+.calendar-day.selected::after {
+    display: none;
+}
+
+.calendar-day.today {
+    font-weight: 700;
+}
+
+.calendar-day.other-month {
+    opacity: 0.3;
+}
+
+.calendar-day.disabled-date {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.calendar-day.disabled-date::after {
+    display: none;
+}
+
+/* ─── Tijdsloten ─── */
+
+.slots-container {
+    flex: 0 0 220px;
+    margin-top: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.slots-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.slots-container::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.slots-title {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding-bottom: 4px;
+    z-index: 1;
+}
+
+.slots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.slot-btn {
+    padding: 8px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.slot-btn:hover {
+    border-color: var(--gold);
+    background: var(--bg-hover);
+}
+
+.slot-btn.selected {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: #fff;
+}
+
+.slot-instructor {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.slots-empty {
+    color: var(--text-dim);
+    font-size: 14px;
+    padding: 20px 0;
+    text-align: center;
+}
+
+.slots-loading {
+    text-align: center;
+    padding: 20px 0;
+    color: var(--text-muted);
+}
+
+/* ─── Samenvatting kaartjes ─── */
+
+.selected-summary {
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 3px solid var(--green);
+}
+
+.summary-card .check {
+    color: var(--green);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.summary-card .info {
+    flex: 1;
+}
+
+.summary-card .info .title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.summary-card .info .detail {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ─── Overzicht ─── */
+
+.overview-cards {
+    margin: 20px 0;
+}
+
+.overview-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--gold);
+}
+
+.overview-card .session-num {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.overview-card .session-date {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.overview-card .session-time {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.overview-card .session-trainer {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* ─── Prijs ─── */
+
+.price-box {
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0 12px;
+}
+
+.price-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.price-amount {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.price-note {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+/* ─── Knoppen ─── */
+
+.nav-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 14px 32px;
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-next {
+    background: var(--gold);
+    color: #fff;
+    flex: 1;
+    max-width: 520px;
+}
+
+.btn-next:not(:disabled):hover {
+    background: var(--gold-light);
+}
+
+.btn-back {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-back:hover {
+    background: var(--bg-hover);
+}
+
+.btn-confirm {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+    background: var(--gold);
+    color: #fff;
+    border-radius: var(--radius-sm);
+}
+
+.btn-confirm:not(:disabled):hover {
+    background: var(--gold-light);
+}
+
+/* ─── Succes ─── */
+
+.success-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #fff;
+    font-size: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+/* ─── Loading ─── */
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 26, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 12px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 420px) {
+    .session-picker {
+        flex-direction: column;
+    }
+
+    .slots-container {
+        flex: none;
+        width: 100%;
+        max-height: none;
+    }
+
+    .slots-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    #app {
+        padding: 16px 12px 90px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .calendar {
+        padding: 14px;
+    }
+
+    .slot-btn {
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+
+    .steps-labels {
+        font-size: 10px;
+    }
+}
