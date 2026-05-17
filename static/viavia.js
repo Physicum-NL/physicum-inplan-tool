@@ -1,4 +1,4 @@
-// Introductie Inplan Tool — Frontend wizard (NL/EN)
+// Via Via Cadeau Inplan Tool — Frontend wizard (NL/EN)
 
 // ─── Language ─────────────────────────────────────────
 const LANG = (typeof PAGE_LANG !== 'undefined' && PAGE_LANG === 'en') ? 'en' : 'nl';
@@ -20,9 +20,9 @@ const DAY_NAMES = {
 
 const T = {
     nl: {
-        stepLabels: ['1e Training', '2e Training', '3e Training', 'Overzicht'],
-        headings: ['1e Introductie training', '2e Introductie training', '3e Introductie training'],
-        subtitles: ['Kies een datum en tijd voor je eerste sessie', 'Kies een datum en tijd voor je tweede sessie', 'Kies een datum en tijd voor je derde sessie'],
+        stepLabels: ['1e Training', '2e Training', 'Overzicht'],
+        headings: ['1e Cadeau training', '2e Cadeau training'],
+        subtitles: ['Kies een datum en tijd voor je eerste gratis sessie', 'Kies een datum en tijd voor je tweede gratis sessie'],
         tip: '<strong>Tip:</strong> Plan minimaal 1 rustdag tussen je trainingen voor het beste resultaat.',
         slotsTitle: 'Beschikbare tijden',
         slotsPlaceholder: 'Kies een datum om beschikbare tijden te zien',
@@ -35,22 +35,13 @@ const T = {
         btnSubmitting: 'Bezig met aanvragen...',
         overviewTitle: 'Overzicht',
         overviewSubtitle: 'Controleer je gekozen trainingen',
-        sessionLabel: (n) => `${n}e introductie training`,
-        summaryLabel: (n) => `${n}e training`,
-        priceLabel: 'Introductie pakket',
-        priceNote: 'Je ontvangt een bevestiging per e-mail. We nemen contact met je op voor de betaling.',
-        successTitle: 'Je trainingen zijn ingepland!',
+        sessionLabel: (n) => `${n}e cadeau training`,
+        summaryLabel: (n) => `${n}e cadeau training`,
+        priceLabel: 'Via Via Cadeau Pakket',
+        priceAmount: 'Gratis',
+        priceNote: 'Gratis cadeau — je ontvangt een bevestiging per e-mail.',
+        successTitle: 'Je gratis trainingen zijn ingepland!',
         successSubtitle: 'Je ontvangt een bevestiging per e-mail.',
-        evalTitle: 'Evaluatiegesprek inplannen',
-        evalIntro: 'Na je 3e training plannen we een evaluatiegesprek in (videocall, 30 min). Wanneer kunnen we je bellen om dit samen in te plannen?',
-        evalDayLabel: 'Voorkeurs dag',
-        evalDayPlaceholder: 'Bijv. dinsdag, woensdag ochtend',
-        evalTimeLabel: 'Voorkeurs tijdstip',
-        evalTimePlaceholder: 'Bijv. tussen 10:00 en 12:00',
-        evalBtn: 'Verstuur voorkeur',
-        evalSending: 'Versturen...',
-        evalDone: 'Bedankt! We bellen je op het afgesproken moment om de evaluatie in te plannen.',
-        evalEmpty: 'Vul een voorkeurs dag of tijdstip in.',
         loading: 'Even geduld...',
         errorEmail: 'E-mailadres ontbreekt. Zorg dat je via de juiste link op deze pagina bent gekomen.',
         errorOrder: (n) => `De ${n}e training moet na de ${n-1}e training gepland worden. Ga terug en kies een latere datum.`,
@@ -58,9 +49,9 @@ const T = {
         redirectUrl: 'https://physicum-pt.nl/bedankt/introductiepakket',
     },
     en: {
-        stepLabels: ['1st Session', '2nd Session', '3rd Session', 'Overview'],
-        headings: ['1st Introduction session', '2nd Introduction session', '3rd Introduction session'],
-        subtitles: ['Choose a date and time for your first session', 'Choose a date and time for your second session', 'Choose a date and time for your third session'],
+        stepLabels: ['1st Session', '2nd Session', 'Overview'],
+        headings: ['1st Gift session', '2nd Gift session'],
+        subtitles: ['Choose a date and time for your first free session', 'Choose a date and time for your second free session'],
         tip: '<strong>Tip:</strong> Schedule at least 1 rest day between your sessions for the best results.',
         slotsTitle: 'Available times',
         slotsPlaceholder: 'Select a date to see available times',
@@ -73,22 +64,13 @@ const T = {
         btnSubmitting: 'Submitting...',
         overviewTitle: 'Overview',
         overviewSubtitle: 'Review your selected sessions',
-        sessionLabel: (n) => `${n}${n===1?'st':n===2?'nd':n===3?'rd':'th'} introduction session`,
-        summaryLabel: (n) => `${n}${n===1?'st':n===2?'nd':n===3?'rd':'th'} session`,
-        priceLabel: 'Introduction package',
-        priceNote: 'You\'ll receive a confirmation by email. We\'ll contact you about payment.',
-        successTitle: 'Your sessions are scheduled!',
+        sessionLabel: (n) => `${n}${n===1?'st':'nd'} gift session`,
+        summaryLabel: (n) => `${n}${n===1?'st':'nd'} gift session`,
+        priceLabel: 'Via Via Gift Package',
+        priceAmount: 'Free',
+        priceNote: 'Free gift — you\'ll receive a confirmation by email.',
+        successTitle: 'Your free sessions are scheduled!',
         successSubtitle: 'You\'ll receive a confirmation by email.',
-        evalTitle: 'Schedule evaluation call',
-        evalIntro: 'After your 3rd session, we\'ll schedule an evaluation call (video call, 30 min). When can we call you to arrange this?',
-        evalDayLabel: 'Preferred day',
-        evalDayPlaceholder: 'e.g. Tuesday, Wednesday morning',
-        evalTimeLabel: 'Preferred time',
-        evalTimePlaceholder: 'e.g. between 10:00 and 12:00',
-        evalBtn: 'Send preference',
-        evalSending: 'Sending...',
-        evalDone: 'Thank you! We\'ll call you at the agreed time to schedule the evaluation.',
-        evalEmpty: 'Please enter a preferred day or time.',
         loading: 'Please wait...',
         errorEmail: 'Email address is missing. Make sure you arrived via the correct link.',
         errorOrder: (n) => `Session ${n} must be after session ${n-1}. Go back and choose a later date.`,
@@ -99,15 +81,15 @@ const T = {
 
 // State
 let currentStep = 0;
-const totalSteps = 4;
-const selections = [null, null, null];
-const calendarStates = [{}, {}, {}];
+const totalSteps = 3;
+const selections = [null, null];
+const calendarStates = [{}, {}];
 
 // ─── Initialisatie ────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
     applyStaticTranslations();
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
         const now = new Date();
         calendarStates[i] = { year: now.getFullYear(), month: now.getMonth() };
         renderCalendar(i);
@@ -121,7 +103,7 @@ function applyStaticTranslations() {
     T.stepLabels.forEach((label, i) => { if (labels[i]) labels[i].textContent = label; });
 
     // Wizard step headings and subtitles
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
         const step = document.querySelector(`.wizard-step[data-step="${i}"]`);
         if (step) {
             step.querySelector('h2').textContent = T.headings[i];
@@ -132,40 +114,22 @@ function applyStaticTranslations() {
     }
 
     // Overview step
-    const overviewStep = document.querySelector('.wizard-step[data-step="3"]');
+    const overviewStep = document.querySelector('.wizard-step[data-step="2"]');
     if (overviewStep) {
         overviewStep.querySelector('h2').textContent = T.overviewTitle;
         overviewStep.querySelector('.step-subtitle').textContent = T.overviewSubtitle;
         overviewStep.querySelector('.price-label').textContent = T.priceLabel;
+        overviewStep.querySelector('.price-amount').textContent = T.priceAmount;
         overviewStep.querySelector('.price-note').textContent = T.priceNote;
         overviewStep.querySelector('#btn-confirm').textContent = T.btnConfirm;
     }
 
     // Success step
-    const successStep = document.querySelector('.wizard-step[data-step="4"]');
+    const successStep = document.querySelector('.wizard-step[data-step="3"]');
     if (successStep) {
         successStep.querySelector('h2').textContent = T.successTitle;
         successStep.querySelector('.step-subtitle').textContent = T.successSubtitle;
     }
-
-    // Evaluation
-    const evalCard = document.querySelector('.evaluation-card');
-    if (evalCard && evalCard.querySelector('h3')) {
-        evalCard.querySelector('h3').textContent = T.evalTitle;
-        evalCard.querySelector('.evaluation-intro').textContent = T.evalIntro;
-        const labels = evalCard.querySelectorAll('label');
-        if (labels[0]) labels[0].textContent = T.evalDayLabel;
-        if (labels[1]) labels[1].textContent = T.evalTimeLabel;
-        const dayInput = document.getElementById('eval-day');
-        const timeInput = document.getElementById('eval-time');
-        if (dayInput) dayInput.placeholder = T.evalDayPlaceholder;
-        if (timeInput) timeInput.placeholder = T.evalTimePlaceholder;
-        const evalBtn = document.getElementById('btn-eval');
-        if (evalBtn) evalBtn.textContent = T.evalBtn;
-    }
-
-    const evalDone = document.querySelector('.evaluation-card.done p');
-    if (evalDone) evalDone.textContent = T.evalDone;
 
     // Navigation buttons
     document.getElementById('btn-next').textContent = T.btnNext;
@@ -179,10 +143,10 @@ function applyStaticTranslations() {
 // ─── Navigatie ────────────────────────────────────────
 
 function nextStep() {
-    if (currentStep < 3 && !selections[currentStep]) return;
-    if (currentStep < 4) {
+    if (currentStep < 2 && !selections[currentStep]) return;
+    if (currentStep < 3) {
         currentStep++;
-        if (currentStep === 3) renderOverview();
+        if (currentStep === 2) renderOverview();
         updateUI();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -216,9 +180,9 @@ function updateUI() {
     const btnNext = document.getElementById('btn-next');
     const navButtons = document.getElementById('nav-buttons');
 
-    btnBack.style.display = currentStep > 0 && currentStep < 4 ? '' : 'none';
+    btnBack.style.display = currentStep > 0 && currentStep < 3 ? '' : 'none';
 
-    if (currentStep >= 3) {
+    if (currentStep >= 2) {
         navButtons.style.display = 'none';
     } else {
         navButtons.style.display = '';
@@ -226,7 +190,6 @@ function updateUI() {
     }
 
     renderSummaryBefore(1);
-    renderSummaryBefore(2);
 }
 
 
@@ -412,7 +375,7 @@ function selectSlot(stepIndex, dateStr, slot) {
         }
     });
 
-    for (let i = stepIndex + 1; i < 3; i++) {
+    for (let i = stepIndex + 1; i < 2; i++) {
         if (selections[i]) {
             if (selections[i].date <= selections[stepIndex].date) {
                 selections[i] = null;
@@ -421,7 +384,7 @@ function selectSlot(stepIndex, dateStr, slot) {
         }
     }
 
-    for (let i = stepIndex + 1; i < 3; i++) {
+    for (let i = stepIndex + 1; i < 2; i++) {
         if (!selections[i] || selections[i].date > selections[stepIndex].date) {
             renderCalendar(i);
         }
@@ -476,7 +439,7 @@ function renderOverview() {
     const container = document.getElementById('overview-cards');
     let html = '';
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
         const sel = selections[i];
         if (!sel) continue;
 
@@ -520,7 +483,7 @@ async function submitBooking() {
         return;
     }
 
-    for (let i = 1; i < 3; i++) {
+    for (let i = 1; i < 2; i++) {
         if (selections[i] && selections[i - 1] && selections[i].date <= selections[i - 1].date) {
             alert(T.errorOrder(i + 1));
             return;
@@ -533,7 +496,7 @@ async function submitBooking() {
     document.getElementById('loading').style.display = '';
 
     try {
-        const resp = await fetch('/api/book', {
+        const resp = await fetch('/api/book-viavia', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -575,48 +538,9 @@ async function submitBooking() {
 function renderSuccess() {
     const container = document.getElementById('success-details');
     let html = '<div style="margin-top: 24px">';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
         html += renderSummaryCard(i);
     }
     html += '</div>';
     container.innerHTML = html;
-}
-
-
-// ─── Evaluatie voorkeur ──────────────────────────────
-
-async function submitEvalPreference() {
-    const day = document.getElementById('eval-day').value.trim();
-    const time = document.getElementById('eval-time').value.trim();
-
-    if (!day && !time) {
-        alert(T.evalEmpty);
-        return;
-    }
-
-    const btn = document.getElementById('btn-eval');
-    btn.disabled = true;
-    btn.textContent = T.evalSending;
-
-    try {
-        const clientData = getClientData();
-        await fetch('/api/evaluation-preference', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                client: clientData,
-                preferred_day: day,
-                preferred_time: time,
-            }),
-        });
-
-        document.getElementById('evaluation-section').style.display = 'none';
-        document.getElementById('evaluation-done').style.display = '';
-
-    } catch (e) {
-        console.error('Evaluation preference error:', e);
-        btn.disabled = false;
-        btn.textContent = T.evalBtn;
-        alert(T.errorGeneric);
-    }
 }

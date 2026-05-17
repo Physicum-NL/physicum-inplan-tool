@@ -4,28 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Introductie Personal Training — Physicum</title>
-    <link rel="stylesheet" href="/static/style.css">
-
-    {% if meta_pixel_id %}
-    <!-- Meta Pixel Code -->
-    <script>
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '{{ meta_pixel_id }}');
-    fbq('track', 'PageView');
-    </script>
-    <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id={{ meta_pixel_id }}&ev=PageView&noscript=1"/></noscript>
-    {% endif %}
+    <link rel="stylesheet" href="/static/style.css?v={{ cache_bust }}">
 </head>
 <body>
     <div id="app">
+        <!-- Logo -->
+        <div class="logo-bar">
+            <img src="/static/logo-dark.svg" alt="Physicum" class="logo">
+        </div>
+
         <!-- Stappen indicator -->
         <div class="steps-bar">
             <div class="step-dot" data-step="0"><span>1</span></div>
@@ -47,6 +34,9 @@
         <div class="wizard-step" data-step="0">
             <h2>1e Introductie training</h2>
             <p class="step-subtitle">Kies een datum en tijd voor je eerste sessie</p>
+            <div class="tip-banner">
+                <strong>Tip:</strong> Plan minimaal 1 rustdag tussen je trainingen voor het beste resultaat.
+            </div>
             <div class="session-picker" data-listing-id="49005" data-step="0"></div>
         </div>
 
@@ -54,6 +44,9 @@
             <div class="selected-summary" id="summary-before-1"></div>
             <h2>2e Introductie training</h2>
             <p class="step-subtitle">Kies een datum en tijd voor je tweede sessie</p>
+            <div class="tip-banner">
+                <strong>Tip:</strong> Plan minimaal 1 rustdag tussen je trainingen voor het beste resultaat.
+            </div>
             <div class="session-picker" data-listing-id="49003" data-step="1"></div>
         </div>
 
@@ -61,6 +54,9 @@
             <div class="selected-summary" id="summary-before-2"></div>
             <h2>3e Introductie training</h2>
             <p class="step-subtitle">Kies een datum en tijd voor je derde sessie</p>
+            <div class="tip-banner">
+                <strong>Tip:</strong> Plan minimaal 1 rustdag tussen je trainingen voor het beste resultaat.
+            </div>
             <div class="session-picker" data-listing-id="49004" data-step="2"></div>
         </div>
 
@@ -76,7 +72,7 @@
                 <span class="price-amount">&euro;99</span>
             </div>
 
-            <p class="price-note">Je ontvangt een bevestiging per e-mail. Betaling volgt na de eerste sessie.</p>
+            <p class="price-note">Je ontvangt een bevestiging per e-mail. We nemen contact met je op voor de betaling.</p>
 
             <button class="btn btn-confirm" id="btn-confirm" onclick="submitBooking()">
                 Trainingen bevestigen
@@ -86,9 +82,40 @@
         <!-- Stap 4: Succes -->
         <div class="wizard-step" data-step="4" style="display:none">
             <div class="success-icon">&#10003;</div>
-            <h2>Je trainingen zijn aangevraagd!</h2>
-            <p class="step-subtitle">We nemen zo snel mogelijk contact met je op om je boekingen te bevestigen.</p>
+            <h2>Je trainingen zijn ingepland!</h2>
+            <p class="step-subtitle">Je ontvangt een bevestiging per e-mail.</p>
             <div id="success-details"></div>
+
+            <!-- Evaluatie terugbel-voorkeur -->
+            <div class="evaluation-section" id="evaluation-section">
+                <div class="evaluation-card">
+                    <h3>Evaluatiegesprek inplannen</h3>
+                    <p class="evaluation-intro">Na je 3e training plannen we een evaluatiegesprek in (videocall, 30 min). Wanneer kunnen we je bellen om dit samen in te plannen?</p>
+
+                    <div class="evaluation-form">
+                        <div class="form-group">
+                            <label for="eval-day">Voorkeurs dag</label>
+                            <input type="text" id="eval-day" placeholder="Bijv. dinsdag, woensdag ochtend" />
+                        </div>
+                        <div class="form-group">
+                            <label for="eval-time">Voorkeurs tijdstip</label>
+                            <input type="text" id="eval-time" placeholder="Bijv. tussen 10:00 en 12:00" />
+                        </div>
+
+                        <button class="btn btn-eval" id="btn-eval" onclick="submitEvalPreference()">
+                            Verstuur voorkeur
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Na verzenden -->
+            <div class="evaluation-done" id="evaluation-done" style="display:none">
+                <div class="evaluation-card done">
+                    <div class="eval-check">&#10003;</div>
+                    <p>Bedankt! We bellen je op het afgesproken moment om de evaluatie in te plannen.</p>
+                </div>
+            </div>
         </div>
 
         <!-- Navigatie -->
@@ -105,9 +132,9 @@
     </div>
 
     <script>
-        // Listing configuratie vanuit Flask
         const LISTINGS = {{ listings | tojson }};
+        const PAGE_LANG = '{{ lang }}';
     </script>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v={{ cache_bust }}"></script>
 </body>
 </html>

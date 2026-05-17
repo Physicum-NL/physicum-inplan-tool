@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telefonisch kennismaken — Physicum</title>
+    <link rel="stylesheet" href="/static/style.css?v={{ cache_bust }}">
+</head>
+<body>
+    <div id="app">
+        <!-- Logo -->
+        <div class="logo-bar">
+            <img src="/static/logo-dark.svg" alt="Physicum" class="logo">
+        </div>
+
+        <!-- Stappen indicator -->
+        <div class="steps-bar">
+            <div class="step-dot" data-step="0"><span>1</span></div>
+            <div class="step-line"></div>
+            <div class="step-dot" data-step="1"><span>2</span></div>
+        </div>
+        <div class="steps-labels">
+            <span>Kies moment</span>
+            <span>Bevestig</span>
+        </div>
+
+        <!-- Stap 0: Kies moment -->
+        <div class="wizard-step" data-step="0">
+            <h2>Telefonisch kennismaken</h2>
+            <p class="step-subtitle">Kies een datum en tijd voor je kennismakingsgesprek</p>
+            <div class="tip-banner">
+                <strong>Tip:</strong> We bellen je op het gekozen tijdstip. Zorg dat je bereikbaar bent.
+            </div>
+            <div class="session-picker" data-listing-id="{{ listing_id }}" data-step="0"></div>
+        </div>
+
+        <!-- Stap 1: Overzicht -->
+        <div class="wizard-step" data-step="1" style="display:none">
+            <h2>Overzicht</h2>
+            <p class="step-subtitle">Controleer je gekozen moment</p>
+
+            <div class="overview-cards" id="overview-cards"></div>
+
+            <div class="price-box">
+                <span class="price-label">Telefonisch kennismaken</span>
+                <span class="price-amount">Gratis</span>
+            </div>
+
+            <p class="price-note">We bellen je op het gekozen moment. Je ontvangt een bevestiging per e-mail.</p>
+
+            <button class="btn btn-confirm" id="btn-confirm" onclick="submitBooking()">
+                Gesprek bevestigen
+            </button>
+        </div>
+
+        <!-- Stap 2: Succes -->
+        <div class="wizard-step" data-step="2" style="display:none">
+            <div class="success-icon">&#10003;</div>
+            <h2>Je kennismakingsgesprek is ingepland!</h2>
+            <p class="step-subtitle">Je ontvangt een bevestiging per e-mail. We bellen je op het afgesproken moment.</p>
+            <div id="success-details"></div>
+        </div>
+
+        <!-- Navigatie -->
+        <div class="nav-buttons" id="nav-buttons">
+            <button class="btn btn-back" id="btn-back" onclick="prevStep()" style="display:none">Terug</button>
+            <button class="btn btn-next" id="btn-next" onclick="nextStep()" disabled>Verder</button>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loading" style="display:none">
+            <div class="spinner"></div>
+            <p>Even geduld...</p>
+        </div>
+    </div>
+
+    <script>
+        const LISTING_ID = {{ listing_id }};
+        const PAGE_LANG = '{{ lang }}';
+    </script>
+    <script src="/static/kennismaken.js?v={{ cache_bust }}"></script>
+</body>
+</html>

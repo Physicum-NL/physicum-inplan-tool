@@ -14,6 +14,12 @@ LISTINGS = [
     {"hid": "LNVLKO", "id": 49004, "name": "3e Introductie personal training", "step": 3},
 ]
 
+# Via Via Cadeau listing in Trainin
+VIAVIA_LISTING = {"hid": "L2YKN", "id": 7117, "name": "Via via cadeau personal training"}
+
+# Telefonisch Kennismaken listing in Trainin
+KENNISMAKEN_LISTING = {"hid": "LNV3K9", "id": 51876, "name": "Telefonisch kennismaken"}
+
 # Locatie
 DEFAULT_LOCATION_ID = 908  # Physicum, Emmaplein 2
 
@@ -26,13 +32,13 @@ HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "5001"))
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# Iframe-embedding
-ALLOWED_FRAME_ANCESTORS = ["https://physicum.nl", "https://www.physicum.nl", "*"]
+# Publieke URL van deze tool (voor links in Slack meldingen)
+SERVER_URL = os.environ.get("SERVER_URL", "http://128.140.43.68:5001")
 
-# Meta (Facebook/Instagram) Pixel — vul je Pixel ID in voor conversie tracking
-# Laat leeg om uit te schakelen
-META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
-
-# Slack Webhook — vul je webhook URL in voor notificaties bij nieuwe aanvragen
+# Slack Webhook — MOET via environment variable gezet worden
 # Maak aan via: Slack > Apps > Incoming Webhooks
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
+
+# Healthchecks.io ping URL — optioneel, voor monitoring van de monitoring
+# Maak gratis aan op https://healthchecks.io en plak de ping URL hier
+HEALTHCHECK_PING_URL = os.environ.get("HEALTHCHECK_PING_URL", "")

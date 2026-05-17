@@ -81,7 +81,7 @@
         }
 
         .section ul li::before {
-            content: '→';
+            content: '\2192';
             position: absolute;
             left: 0;
             color: var(--gold);
@@ -153,6 +153,10 @@
             padding: 20px 24px;
             margin: 20px 0;
             color: #fff;
+        }
+
+        .highlight-box.green {
+            background: linear-gradient(135deg, #2e7d32, #4caf50);
         }
 
         .highlight-box h3 {
@@ -254,9 +258,88 @@
             background: var(--bg-hover);
         }
 
+        .live-preview {
+            margin: 24px 0 32px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .live-preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .live-preview-header span {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+        }
+
+        .live-preview-header a {
+            font-size: 12px;
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .live-preview iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        .status-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--green);
+        }
+
+        .status-live::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .slack-example {
+            background: #1a1d21;
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #d1d2d3;
+            border-left: 3px solid #4caf50;
+        }
+
+        .slack-example .slack-bold {
+            color: #fff;
+            font-weight: 700;
+        }
+
         @media (max-width: 600px) {
             .comparison-grid {
                 grid-template-columns: 1fr;
+            }
+            .live-preview iframe {
+                height: 500px;
             }
         }
     </style>
@@ -264,9 +347,18 @@
 <body>
     <div class="uitleg">
         <div class="uitleg-header">
-            <div class="uitleg-badge">Interne documentatie</div>
+            <img src="/static/logo.svg" alt="Physicum" style="height:30px; margin-bottom:20px; opacity:0.95;">
             <h1>Introductie Inplan Tool</h1>
-            <p>Eigen booking-widget voor het introductie-pakket van Physicum</p>
+            <p>Volledig geautomatiseerde booking-widget die Plug &amp; Pay vervangt — hogere conversie, directe agenda-integratie, betere tracking</p>
+        </div>
+
+        <!-- Live preview -->
+        <div class="live-preview">
+            <div class="live-preview-header">
+                <span class="status-live">Live op server</span>
+                <a href="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678" target="_blank">Openen in nieuw tabblad &#8599;</a>
+            </div>
+            <iframe src="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678"></iframe>
         </div>
 
         <!-- 1. Waarom conversie-verhogend -->
@@ -276,10 +368,10 @@
             <h3>Het probleem met Plug &amp; Pay</h3>
             <p>Nu stuurt de matchtest-funnel klanten naar een <strong>Plug &amp; Pay checkout pagina</strong>. Dit introduceert frictie:</p>
             <ul>
-                <li>De klant verlaat de Physicum-omgeving → vertrouwen daalt</li>
+                <li>De klant verlaat de Physicum-omgeving &#8594; vertrouwen daalt</li>
                 <li>Extra stap (checkout) zonder dat ze weten wanneer hun training is</li>
-                <li>Geen datum/tijd keuze → onduidelijkheid → twijfel → afhaken</li>
-                <li>Na betaling moet de klant nog apart een sessie boeken → dubbel werk</li>
+                <li>Geen datum/tijd keuze &#8594; onduidelijkheid &#8594; twijfel &#8594; afhaken</li>
+                <li>Na betaling moet de klant nog apart een sessie boeken &#8594; dubbel werk</li>
             </ul>
 
             <h3>De oplossing: direct inplannen</h3>
@@ -287,20 +379,20 @@
             <ul>
                 <li><strong>Geen redirect</strong> — blijft in dezelfde omgeving (iframe of eigen pagina)</li>
                 <li><strong>Datum + tijd direct zichtbaar</strong> — concrete commitment, geen onzekerheid</li>
-                <li><strong>Minder stappen</strong> — kies 3 sessies → bevestig → klaar</li>
+                <li><strong>Minder stappen</strong> — kies 3 sessies &#8594; bevestig &#8594; klaar</li>
                 <li><strong>Psychologisch</strong> — wie al zijn trainingen heeft ingepland, haakt minder snel af</li>
             </ul>
 
             <div class="comparison-grid">
                 <div class="comparison-card old">
                     <h4>Huidige flow (Plug &amp; Pay)</h4>
-                    <p>Matchtest → Redirect naar P&P → Checkout → Betaling → Wacht op email → Plan zelf sessies in Trainin</p>
-                    <p><span class="tag tag-red">6+ stappen</span> <span class="tag tag-red">€1.000/jaar</span></p>
+                    <p>Matchtest &#8594; Redirect naar P&amp;P &#8594; Checkout &#8594; Betaling &#8594; Wacht op email &#8594; Plan zelf sessies in Trainin</p>
+                    <p><span class="tag tag-red">6+ stappen</span> <span class="tag tag-red">&euro;1.000/jaar</span></p>
                 </div>
                 <div class="comparison-card new">
                     <h4>Nieuwe flow (Inplan Tool)</h4>
-                    <p>Matchtest → Kies 3 trainingen → Bevestig → Klaar</p>
-                    <p><span class="tag tag-green">3 stappen</span> <span class="tag tag-green">€0/jaar</span></p>
+                    <p>Matchtest &#8594; Kies 3 trainingen &#8594; Bevestig &#8594; Klaar (alles automatisch in Trainin)</p>
+                    <p><span class="tag tag-green">3 stappen</span> <span class="tag tag-green">&euro;0/jaar</span></p>
                 </div>
             </div>
         </div>
@@ -311,7 +403,7 @@
 
             <p>De tool ontvangt klantgegevens via <strong>URL parameters</strong>, precies zoals Plug &amp; Pay dat deed. De matchtest (of CRM/automatie) stuurt de klant naar deze URL:</p>
 
-            <div class="code-example">https://inplan.physicum.nl/?name=Jan+de+Vries&email=jan@gmail.com&phone=0612345678</div>
+            <div class="code-example">http://128.140.43.68:5001/?name=Jan+de+Vries&amp;email=jan@gmail.com&amp;phone=0612345678</div>
 
             <h3>Beschikbare parameters</h3>
             <ul>
@@ -321,12 +413,11 @@
             </ul>
 
             <h3>Integratie met matchtest</h3>
-            <p>In de matchtest-funnel vervang je de Plug &amp; Pay link door de inplan-tool URL. De data die nu al in de URL naar P&P gaat, gaat op dezelfde manier naar deze tool. <strong>Geen extra integratie nodig.</strong></p>
+            <p>In de matchtest-funnel vervang je de Plug &amp; Pay link door de inplan-tool URL. De data die nu al in de URL naar P&amp;P gaat, gaat op dezelfde manier naar deze tool. <strong>Geen extra integratie nodig.</strong></p>
 
             <h3>Integratie met ActiveCampaign / CRM</h3>
             <p>Als je vanuit ActiveCampaign of een ander CRM een link stuurt, gebruik je personalisatie-tags in de URL:</p>
-            <div class="code-example">https://inplan.physicum.nl/?name=%FIRSTNAME%+%LASTNAME%&email=%EMAIL%&phone=%PHONE%</div>
-            <p>De exacte tags hangen af van je CRM-systeem.</p>
+            <div class="code-example">http://128.140.43.68:5001/?name=%FIRSTNAME%+%LASTNAME%&amp;email=%EMAIL%&amp;phone=%PHONE%</div>
         </div>
 
         <!-- 3. Hoe Trainin-data wordt opgehaald -->
@@ -353,7 +444,7 @@
                     </div>
                     <div class="flow-content">
                         <div class="flow-title">API call naar Trainin</div>
-                        <div class="flow-desc">Via onze Flask server → Trainin Schedule API. Per listing (introductie 1, 2, 3) worden datums en tijdsloten opgehaald</div>
+                        <div class="flow-desc">Via onze Flask server &#8594; Trainin Schedule API. Per listing (introductie 1, 2, 3) worden datums en tijdsloten opgehaald</div>
                     </div>
                 </div>
                 <div class="flow-step">
@@ -363,7 +454,7 @@
                     </div>
                     <div class="flow-content">
                         <div class="flow-title">Beschikbaarheid getoond</div>
-                        <div class="flow-desc">Datums met groene stip = beschikbaar. Klik → tijdsloten verschijnen met trainer-naam</div>
+                        <div class="flow-desc">Datums met groene stip = beschikbaar. Klik &#8594; tijdsloten verschijnen met trainer-naam</div>
                     </div>
                 </div>
                 <div class="flow-step">
@@ -378,14 +469,19 @@
             </div>
 
             <h3>Welke listings worden gebruikt?</h3>
-            <p>De tool is gekoppeld aan 3 specifieke Trainin-listings (de 3 introductie-sessies). Deze staan in <strong>config.py</strong> en kunnen aangepast worden als de listing-IDs veranderen.</p>
+            <ul>
+                <li><strong>1e Introductie personal training</strong> (ID: 49005)</li>
+                <li><strong>2e Introductie personal training</strong> (ID: 49003)</li>
+                <li><strong>3e Introductie personal training</strong> (ID: 49004)</li>
+            </ul>
+            <p>De listings staan in <strong>config.py</strong> en kunnen aangepast worden als de listing-IDs veranderen.</p>
         </div>
 
-        <!-- 4. Slack aanvragen & workflow -->
+        <!-- 4. Wat er gebeurt bij bevestigen -->
         <div class="section">
-            <h2>4. Aanvragen via Slack — hoe het werkt</h2>
+            <h2>4. Wat er gebeurt als een klant bevestigt</h2>
 
-            <p>Wanneer een klant de 3 trainingen bevestigt, gebeurt er het volgende:</p>
+            <p>Wanneer een klant de 3 trainingen bevestigt, wordt <strong>alles automatisch verwerkt</strong> — er is geen handmatig werk nodig.</p>
 
             <div class="flow-diagram">
                 <div class="flow-step">
@@ -394,8 +490,8 @@
                         <div class="flow-connector"></div>
                     </div>
                     <div class="flow-content">
-                        <div class="flow-title">Klant klikt "Trainingen bevestigen"</div>
-                        <div class="flow-desc">De tool zoekt het e-mailadres op in Trainin om te checken of de klant al bestaat</div>
+                        <div class="flow-title">Klant wordt opgezocht in Trainin</div>
+                        <div class="flow-desc">Op basis van e-mailadres checkt de tool of de klant al in Trainin staat</div>
                     </div>
                 </div>
                 <div class="flow-step">
@@ -404,8 +500,8 @@
                         <div class="flow-connector"></div>
                     </div>
                     <div class="flow-content">
-                        <div class="flow-title">Slack-melding verstuurd</div>
-                        <div class="flow-desc">Een geformatteerd bericht komt in jullie Slack-kanaal met: naam, email, telefoon, de 3 gekozen sessies, en of de klant al in Trainin staat</div>
+                        <div class="flow-title">Klant automatisch aangemaakt (indien nieuw)</div>
+                        <div class="flow-desc">Nieuwe klant? Wordt direct aangemaakt in Trainin met naam, email en telefoonnummer. Bestaande klant? Wordt gekoppeld.</div>
                     </div>
                 </div>
                 <div class="flow-step">
@@ -414,34 +510,50 @@
                         <div class="flow-connector"></div>
                     </div>
                     <div class="flow-content">
-                        <div class="flow-title">Staff verwerkt in Trainin</div>
-                        <div class="flow-desc">Jullie maken de booking handmatig aan in Trainin op basis van de Slack-melding. Bestaande klant? Koppel direct. Nieuwe klant? Maak aan + book.</div>
+                        <div class="flow-title">3 sessies aangemaakt in de agenda</div>
+                        <div class="flow-desc">De 3 introductie-trainingen worden direct in de Trainin-agenda gezet. De klant en trainer worden automatisch gekoppeld. <strong>Het tijdslot is direct geblokkeerd.</strong></div>
                     </div>
                 </div>
                 <div class="flow-step">
                     <div class="flow-line">
                         <div class="flow-dot">4</div>
+                        <div class="flow-connector"></div>
                     </div>
                     <div class="flow-content">
-                        <div class="flow-title">Klant ontvangt bevestiging</div>
-                        <div class="flow-desc">Na verwerking in Trainin krijgt de klant automatisch de standaard Trainin-bevestigingsmail</div>
+                        <div class="flow-title">Slack-melding verstuurd</div>
+                        <div class="flow-desc">Een uitgebreide melding komt in jullie Slack-kanaal met: naam, email, telefoon, de 3 sessies (met trainers), en de status per sessie</div>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-line">
+                        <div class="flow-dot">5</div>
+                    </div>
+                    <div class="flow-content">
+                        <div class="flow-title">Evaluatie terugbelverzoek</div>
+                        <div class="flow-desc">Na bevestiging kan de klant aangeven wanneer ze gebeld willen worden voor de evaluatie. Dit komt als apart bericht in Slack.</div>
                     </div>
                 </div>
             </div>
 
-            <div class="highlight-box">
-                <h3>Waarom niet volledig automatisch?</h3>
-                <p>De Trainin Staff API biedt geen endpoint om bookings programmatisch aan te maken. Daarom werkt de tool met een <strong>semi-automatische flow</strong>: de klant plant zelf in, jullie bevestigen in Trainin. Dit kost ~30 seconden per aanvraag.</p>
-                <p style="margin-top: 8px;">Zodra Trainin een booking-API toevoegt, kan deze stap volledig geautomatiseerd worden zonder aanpassingen aan de frontend.</p>
+            <div class="highlight-box green">
+                <h3>Volledig automatisch</h3>
+                <p>De hele flow — van klant aanmaken tot sessies in de agenda — draait automatisch. Het enige wat jullie hoeven te doen is <strong>contact opnemen voor de betaling</strong>. De Slack-melding bevat directe links naar de klant en agenda in Trainin.</p>
             </div>
 
-            <h3>Slack instellen</h3>
-            <p>Om Slack-meldingen te ontvangen:</p>
-            <ul>
-                <li>Maak een <strong>Incoming Webhook</strong> aan in Slack (via Slack App directory)</li>
-                <li>Koppel deze aan het gewenste kanaal (bijv. #introductie-aanvragen)</li>
-                <li>Zet de webhook-URL in <strong>config.py</strong> bij <code>SLACK_WEBHOOK_URL</code></li>
-            </ul>
+            <h3>Voorbeeld Slack-melding</h3>
+            <div class="slack-example">
+                <strong>&#128197; Nieuwe introductie-boeking</strong><br><br>
+                <span class="slack-bold">Naam:</span> Jan de Vries &nbsp;&nbsp; <span class="slack-bold">Klant:</span> &#9989; Nieuw aangemaakt in Trainin<br>
+                <span class="slack-bold">E-mail:</span> jan@gmail.com &nbsp;&nbsp; <span class="slack-bold">Telefoon:</span> 0612345678<br><br>
+                <span class="slack-bold">Sessies:</span> &#9989; Alle 3 sessies ingepland in agenda<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&#9989; <span class="slack-bold">1e Introductie PT</span>: woensdag 25 maart om 15:00 (Tessa van der Neut)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&#9989; <span class="slack-bold">2e Introductie PT</span>: donderdag 26 maart om 15:00 (Thomas van Vliet)<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&#9989; <span class="slack-bold">3e Introductie PT</span>: vrijdag 27 maart om 15:00 (Pieter Bode)<br><br>
+                <span style="color: var(--gold);">[Open klant]</span> &nbsp; [Open agenda]
+            </div>
+
+            <h3>Slack status</h3>
+            <p><span class="tag tag-green">Actief</span> De Slack Incoming Webhook is aangemaakt en geconfigureerd. Meldingen komen automatisch binnen in het gekoppelde Slack-kanaal.</p>
         </div>
 
         <!-- 5. Tracking & besparing -->
@@ -462,51 +574,151 @@
                 <li>Welke advertenties de meeste boekingen opleveren</li>
             </ul>
 
-            <h3>Voordelen t.o.v. Plug &amp; Pay tracking</h3>
-            <ul>
-                <li><strong>Directe tracking</strong> — geen third-party checkout die pixel-data kan verliezen</li>
-                <li><strong>Eigen domein</strong> — pixel draait op jullie domein, betrouwbaardere attributie</li>
-                <li><strong>Geen cookie-issues</strong> — geen cross-domain tracking problemen</li>
-                <li><strong>Custom events</strong> — later uitbreidbaar met stap-voor-stap tracking (welke stap haakt af?)</li>
-            </ul>
-
             <div class="highlight-box">
-                <h3>Besparing: €1.000/jaar</h3>
+                <h3>Besparing: &euro;1.000/jaar</h3>
                 <ul>
                     <li>Plug &amp; Pay licentie: niet meer nodig</li>
-                    <li>Transactiekosten P&P: niet meer nodig (betaling gaat buiten P&P om)</li>
-                    <li>Totale besparing: <strong>~€1.000 per jaar</strong></li>
+                    <li>Transactiekosten P&amp;P: niet meer nodig (betaling gaat buiten P&amp;P om)</li>
+                    <li>Totale besparing: <strong>~&euro;1.000 per jaar</strong></li>
                 </ul>
                 <p style="margin-top: 8px;">De inplan-tool draait op jullie bestaande Hetzner VPS — geen extra kosten.</p>
             </div>
 
             <h3>Meta Pixel instellen</h3>
             <ul>
-                <li>Kopieer je <strong>Meta Pixel ID</strong> uit Meta Business Suite → Events Manager</li>
+                <li>Kopieer je <strong>Meta Pixel ID</strong> uit Meta Business Suite &#8594; Events Manager</li>
                 <li>Zet dit in <strong>config.py</strong> bij <code>META_PIXEL_ID</code></li>
                 <li>De pixel laadt automatisch op elke pagina en fired events bij conversie</li>
             </ul>
         </div>
 
+        <!-- 6. Stabiliteit & betrouwbaarheid -->
+        <div class="section">
+            <h2>6. Stabiliteit &amp; betrouwbaarheid</h2>
+
+            <h3>Authenticatie</h3>
+            <p>De tool logt automatisch in op Trainin via de Staff API. Dit werkt als volgt:</p>
+            <ul>
+                <li>Bij de eerste booking logt de tool in met de Trainin-inloggegevens</li>
+                <li>De sessie wordt gecached zodat niet bij elke booking opnieuw ingelogd hoeft te worden</li>
+                <li>Als de sessie verloopt, logt de tool <strong>automatisch opnieuw in</strong> — zonder downtime</li>
+            </ul>
+            <p>Inloggegevens staan veilig als environment variabelen op de server (niet in de code).</p>
+
+            <h3>Wat als een sessie niet aangemaakt kan worden?</h3>
+            <ul>
+                <li>Elke sessie wordt individueel aangemaakt — als er 1 faalt, worden de andere 2 nog steeds geboekt</li>
+                <li>De Slack-melding toont per sessie of het gelukt is (&#9989; of &#10060;)</li>
+                <li>Bij gedeeltelijke fout staat in de melding hoeveel sessies handmatig aangemaakt moeten worden</li>
+                <li>De klant ziet altijd een positief bericht — "We nemen contact op ter bevestiging"</li>
+            </ul>
+
+            <h3>Wat als Trainin offline is?</h3>
+            <ul>
+                <li>De kalender toont geen beschikbare datums (graceful degradation)</li>
+                <li>De tool crasht niet — klanten zien gewoon een lege kalender</li>
+                <li>Zodra Trainin weer online is, werkt alles direct weer</li>
+            </ul>
+
+            <h3>Chronologische volgorde</h3>
+            <p>De tool voorkomt dat klanten sessies in de verkeerde volgorde boeken. De 2e training moet altijd na de 1e, en de 3e na de 2e. Dit wordt zowel in de kalender (datums worden grijs) als bij het bevestigen gevalideerd.</p>
+        </div>
+
+        <!-- 7. Integratie -->
+        <div class="section">
+            <h2>7. Integratie in WordPress (iframe)</h2>
+
+            <p>De tool is ontworpen om als <strong>iframe</strong> in te bouwen op elke pagina — bijvoorbeeld de matchtest-resultatenpagina. Zo blijft de klant in de Physicum-omgeving.</p>
+
+            <h3>Stap 1: HTML-blok toevoegen</h3>
+            <p>Voeg op de gewenste WordPress-pagina een <strong>Custom HTML blok</strong> toe met deze code:</p>
+
+            <div class="code-example">&lt;iframe
+  src="http://128.140.43.68:5001/?name=NAAM&amp;email=EMAIL&amp;phone=TELEFOON"
+  width="100%"
+  height="800"
+  frameborder="0"
+  style="border:none; border-radius:12px;"&gt;
+&lt;/iframe&gt;</div>
+
+            <h3>Stap 2: Klantdata dynamisch meegeven</h3>
+            <p>Vervang <code>NAAM</code>, <code>EMAIL</code> en <code>TELEFOON</code> door de dynamische waarden uit je matchtest/funnel.</p>
+
+            <h3>Stap 3: Met domein (na DNS-instelling)</h3>
+            <p>Zodra het domein is ingesteld met HTTPS, vervang je het IP-adres:</p>
+
+            <div class="code-example">&lt;iframe
+  src="https://inplan.physicum.nl/?name=NAAM&amp;email=EMAIL&amp;phone=TELEFOON"
+  width="100%"
+  height="800"
+  frameborder="0"
+  style="border:none; border-radius:12px;"&gt;
+&lt;/iframe&gt;</div>
+
+            <h3>Tips</h3>
+            <ul>
+                <li><strong>Hoogte aanpassen</strong> — 800px past voor desktop. Op mobiel schaalt de tool mee door <code>width="100%"</code></li>
+                <li><strong>Spaties in namen</strong> — vervang spaties door <code>+</code> in de URL (bijv. <code>Jan+de+Vries</code>)</li>
+                <li><strong>Elementor / WPBakery</strong> — gebruik het HTML-widget of Raw HTML element</li>
+                <li><strong>Funnel-tools</strong> — tools als Perspective, Typeform of ClickFunnels kunnen ook een iframe embedden met dezelfde code</li>
+            </ul>
+        </div>
+
+        <!-- 8. Mogelijke verbeteringen -->
+        <div class="section" style="border-left-color: var(--gold-light);">
+            <h2>8. Mogelijke verbeteringen</h2>
+            <p>Opties om de tool verder te optimaliseren.</p>
+
+            <h3>Conversie-verhogend</h3>
+            <ul>
+                <li><strong>Stap-voor-stap tracking</strong> — meet per stap waar mensen afhaken (stap 1 &#8594; 2 &#8594; 3 &#8594; bevestig)</li>
+                <li><strong>Urgentie-indicator</strong> — "Nog 2 plekken beschikbaar" bij populaire tijden</li>
+                <li><strong>Voorkeur-tijden bovenaan</strong> — sorteer populaire tijden (18:00&#8211;20:00) naar boven</li>
+                <li><strong>Bevestigingsmail vanuit de tool</strong> — direct een mail sturen na bevestiging (niet wachten op handmatige bevestiging in Trainin)</li>
+            </ul>
+
+            <h3>Operationeel</h3>
+            <ul>
+                <li><strong>WhatsApp-reminder</strong> — dag voor de training een reminder via WhatsApp (hogere open rate dan email)</li>
+                <li><strong>Automatisch evaluatie inplannen</strong> — na het introductiepakket automatisch een evaluatie-sessie boeken</li>
+                <li><strong>Dubbele boeking voorkomen</strong> — check of dezelfde klant al eerder geboekt heeft</li>
+            </ul>
+
+            <h3>Data &amp; tracking</h3>
+            <ul>
+                <li><strong>UTM parameters doorsturen</strong> — matchtest UTM tags meenemen, zodat je in Meta Ads exact ziet welke campagne welke bookings oplevert</li>
+                <li><strong>Conversion API (server-side)</strong> — naast de pixel ook server-side events sturen naar Meta, veel betrouwbaarder</li>
+            </ul>
+        </div>
+
         <!-- Samenvatting -->
         <div class="section" style="border-left-color: var(--green);">
-            <h2>Samenvatting: wat moet er nog gebeuren?</h2>
+            <h2>Samenvatting</h2>
             <ul>
                 <li><span class="tag tag-green">Klaar</span> Frontend wizard met echte Trainin-beschikbaarheid</li>
-                <li><span class="tag tag-green">Klaar</span> Backend API proxy + booking-aanvragen</li>
+                <li><span class="tag tag-green">Klaar</span> Automatisch klant aanmaken in Trainin</li>
+                <li><span class="tag tag-green">Klaar</span> Automatisch 3 sessies inplannen in de agenda (tijdslot geblokkeerd)</li>
+                <li><span class="tag tag-green">Klaar</span> Trainer automatisch gekoppeld aan sessie</li>
+                <li><span class="tag tag-green">Klaar</span> Slack notificaties met status per sessie + directe links</li>
+                <li><span class="tag tag-green">Klaar</span> Evaluatie terugbelverzoek na bevestiging</li>
+                <li><span class="tag tag-green">Klaar</span> Automatische re-login bij verlopen sessie</li>
+                <li><span class="tag tag-green">Klaar</span> Chronologische volgorde afdwingen</li>
                 <li><span class="tag tag-green">Klaar</span> Meta Pixel tracking (configuratie nodig)</li>
-                <li><span class="tag tag-green">Klaar</span> Slack notificaties (configuratie nodig)</li>
-                <li><span class="tag tag-gold">To do</span> Slack Incoming Webhook aanmaken + URL invullen in config</li>
+                <li><span class="tag tag-green">Klaar</span> Deploy naar Hetzner VPS</li>
+                <li><span class="tag tag-green">Klaar</span> WordPress/iframe integratie-instructies</li>
                 <li><span class="tag tag-gold">To do</span> Meta Pixel ID invullen in config</li>
-                <li><span class="tag tag-gold">To do</span> Deploy naar Hetzner VPS (Dockerfile is klaar)</li>
+                <li><span class="tag tag-gold">To do</span> Domein + HTTPS instellen</li>
                 <li><span class="tag tag-gold">To do</span> Matchtest-funnel link vervangen door inplan-tool URL</li>
-                <li><span class="tag tag-gold">To do</span> Testen met echte klantdata</li>
             </ul>
         </div>
 
         <a href="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678" class="demo-link">
-            Bekijk de tool met testdata →
+            Zelf testen met voorbeelddata &#8594;
         </a>
+
+        <p style="text-align:center; margin-top:16px; font-size:12px; color:var(--text-dim);">
+            Vragen? Neem contact op met Sylvester.
+        </p>
     </div>
 </body>
 </html>
