@@ -356,9 +356,78 @@
         <div class="live-preview">
             <div class="live-preview-header">
                 <span class="status-live">Live op server</span>
-                <a href="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678" target="_blank">Openen in nieuw tabblad &#8599;</a>
+                <a href="/?firstname=Test&lastname=Klant&email=test@physicum.nl&telephone=0612345678" target="_blank">Openen in nieuw tabblad &#8599;</a>
             </div>
-            <iframe src="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678"></iframe>
+            <iframe src="/?firstname=Test&lastname=Klant&email=test@physicum.nl&telephone=0612345678"></iframe>
+        </div>
+
+        <!-- 0. Drie flows & link-structuur -->
+        <div class="section" style="border-left-color: var(--green);">
+            <h2>0. Drie flows &amp; link-structuur</h2>
+
+            <p>De tool heeft <strong>3 aparte flows</strong>, elk op een eigen URL. Alle flows gebruiken dezelfde URL-parameters voor klantdata.</p>
+
+            <h3>URL-parameters (voor alle flows identiek)</h3>
+            <ul>
+                <li><strong>firstname</strong> — Voornaam (verplicht)</li>
+                <li><strong>lastname</strong> — Achternaam (verplicht)</li>
+                <li><strong>email</strong> — E-mailadres (verplicht)</li>
+                <li><strong>telephone</strong> — Telefoonnummer</li>
+                <li><strong>redirect</strong> — Custom redirect URL na bevestiging (optioneel)</li>
+            </ul>
+
+            <h3>Flow 1: Introductie inplannen</h3>
+            <p>Klant plant <strong>3 introductie PT-sessies</strong> in. Prijs: &euro;99.</p>
+            <div class="code-example">http://128.140.43.68:5001/?firstname=Jan&amp;lastname=de+Vries&amp;email=jan@gmail.com&amp;telephone=0612345678</div>
+
+            <h3>Flow 2: Telefonisch kennismaken</h3>
+            <p>Klant plant <strong>1 telefonisch kennismakingsgesprek</strong> in. Gratis.</p>
+            <div class="code-example">http://128.140.43.68:5001/kennismaken?firstname=Jan&amp;lastname=de+Vries&amp;email=jan@gmail.com&amp;telephone=0612345678</div>
+
+            <h3>Flow 3: Via Via Cadeau</h3>
+            <p>Klant plant <strong>2 gratis cadeau PT-sessies</strong> in (doorverwijzing). Gratis.</p>
+            <div class="code-example">http://128.140.43.68:5001/viavia?firstname=Jan&amp;lastname=de+Vries&amp;email=jan@gmail.com&amp;telephone=0612345678</div>
+
+            <h3>Engelse versie</h3>
+            <p>Voeg <code>/en</code> toe v&oacute;&oacute;r het pad voor de Engelse versie:</p>
+            <ul>
+                <li><code>/en</code> — Introductie (Engels)</li>
+                <li><code>/en/kennismaken</code> — Kennismaken (Engels)</li>
+                <li><code>/en/viavia</code> — Via Via Cadeau (Engels)</li>
+            </ul>
+
+            <h3>Integratie op de landingspagina</h3>
+            <p>Op de matchtest-resultaatpagina komen <strong>2 keuzes</strong>:</p>
+
+            <div class="comparison-grid">
+                <div class="comparison-card new">
+                    <h4>Knop A: Direct inplannen</h4>
+                    <p>Stuurt door naar <code>/</code></p>
+                    <p>Klant plant direct 3 intro-sessies in</p>
+                </div>
+                <div class="comparison-card new">
+                    <h4>Knop B: Eerst bellen</h4>
+                    <p>Stuurt door naar <code>/kennismaken</code></p>
+                    <p>Klant plant een telefonisch gesprek in</p>
+                </div>
+            </div>
+
+            <p>De <strong>Via Via flow</strong> loopt via een apart kanaal (niet op de matchtest-pagina).</p>
+
+            <h3>Redirect na bevestiging</h3>
+            <ul>
+                <li>Introductie &#8594; <code>https://physicum-pt.nl/bedankt/introductiepakket</code></li>
+                <li>Kennismaken &#8594; <code>https://physicum-pt.nl/bedankt/kennismaken</code></li>
+                <li>Via Via &#8594; <code>https://physicum-pt.nl/bedankt/introductiepakket</code></li>
+            </ul>
+            <p>Custom redirect mogelijk via de <code>redirect</code> URL-parameter.</p>
+
+            <h3>Iframe voorbeeld</h3>
+            <div class="code-example">&lt;iframe
+  src="http://128.140.43.68:5001/kennismaken?firstname=VOORNAAM&amp;lastname=ACHTERNAAM&amp;email=EMAIL&amp;telephone=TELEFOON"
+  width="100%" height="700" frameborder="0"
+  style="border:none; border-radius:12px;"&gt;
+&lt;/iframe&gt;</div>
         </div>
 
         <!-- 1. Waarom conversie-verhogend -->
@@ -403,13 +472,14 @@
 
             <p>De tool ontvangt klantgegevens via <strong>URL parameters</strong>, precies zoals Plug &amp; Pay dat deed. De matchtest (of CRM/automatie) stuurt de klant naar deze URL:</p>
 
-            <div class="code-example">http://128.140.43.68:5001/?name=Jan+de+Vries&amp;email=jan@gmail.com&amp;phone=0612345678</div>
+            <div class="code-example">http://128.140.43.68:5001/?firstname=Jan&amp;lastname=de+Vries&amp;email=jan@gmail.com&amp;telephone=0612345678</div>
 
             <h3>Beschikbare parameters</h3>
             <ul>
-                <li><strong>name</strong> — Volledige naam (wordt gesplitst in voor- en achternaam)</li>
+                <li><strong>firstname</strong> — Voornaam (verplicht)</li>
+                <li><strong>lastname</strong> — Achternaam (verplicht)</li>
                 <li><strong>email</strong> — E-mailadres (verplicht, hiermee zoeken we in Trainin)</li>
-                <li><strong>phone</strong> — Telefoonnummer</li>
+                <li><strong>telephone</strong> — Telefoonnummer</li>
             </ul>
 
             <h3>Integratie met matchtest</h3>
@@ -417,7 +487,7 @@
 
             <h3>Integratie met ActiveCampaign / CRM</h3>
             <p>Als je vanuit ActiveCampaign of een ander CRM een link stuurt, gebruik je personalisatie-tags in de URL:</p>
-            <div class="code-example">http://128.140.43.68:5001/?name=%FIRSTNAME%+%LASTNAME%&amp;email=%EMAIL%&amp;phone=%PHONE%</div>
+            <div class="code-example">http://128.140.43.68:5001/?firstname=%FIRSTNAME%&amp;lastname=%LASTNAME%&amp;email=%EMAIL%&amp;telephone=%PHONE%</div>
         </div>
 
         <!-- 3. Hoe Trainin-data wordt opgehaald -->
@@ -634,7 +704,7 @@
             <p>Voeg op de gewenste WordPress-pagina een <strong>Custom HTML blok</strong> toe met deze code:</p>
 
             <div class="code-example">&lt;iframe
-  src="http://128.140.43.68:5001/?name=NAAM&amp;email=EMAIL&amp;phone=TELEFOON"
+  src="http://128.140.43.68:5001/?firstname=VOORNAAM&amp;lastname=ACHTERNAAM&amp;email=EMAIL&amp;telephone=TELEFOON"
   width="100%"
   height="800"
   frameborder="0"
@@ -642,13 +712,13 @@
 &lt;/iframe&gt;</div>
 
             <h3>Stap 2: Klantdata dynamisch meegeven</h3>
-            <p>Vervang <code>NAAM</code>, <code>EMAIL</code> en <code>TELEFOON</code> door de dynamische waarden uit je matchtest/funnel.</p>
+            <p>Vervang <code>VOORNAAM</code>, <code>ACHTERNAAM</code>, <code>EMAIL</code> en <code>TELEFOON</code> door de dynamische waarden uit je matchtest/funnel.</p>
 
             <h3>Stap 3: Met domein (na DNS-instelling)</h3>
             <p>Zodra het domein is ingesteld met HTTPS, vervang je het IP-adres:</p>
 
             <div class="code-example">&lt;iframe
-  src="https://inplan.physicum.nl/?name=NAAM&amp;email=EMAIL&amp;phone=TELEFOON"
+  src="https://inplan.physicum.nl/?firstname=VOORNAAM&amp;lastname=ACHTERNAAM&amp;email=EMAIL&amp;telephone=TELEFOON"
   width="100%"
   height="800"
   frameborder="0"
@@ -712,7 +782,7 @@
             </ul>
         </div>
 
-        <a href="/?name=Test+Klant&email=test@physicum.nl&phone=0612345678" class="demo-link">
+        <a href="/?firstname=Test&lastname=Klant&email=test@physicum.nl&telephone=0612345678" class="demo-link">
             Zelf testen met voorbeelddata &#8594;
         </a>
 
