@@ -16,13 +16,17 @@ import logging
 import os
 import re
 import threading
+import time as _time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import httpx
 
-from config import SLACK_WEBHOOK_URL, TRAININ_BASE, DEFAULT_LOCATION_ID
+from config import (
+    SLACK_WEBHOOK_URL, TRAININ_BASE, DEFAULT_LOCATION_ID,
+    STUDIO_CAPACITY, ONLINE_ONLY_TRAINERS,
+)
 from trainin_client import TraininClient
 
 logger = logging.getLogger(__name__)
@@ -557,6 +561,280 @@ def send_slack_notification(
         logger.info("Slack notificatie verstuurd")
     except Exception as e:
         logger.warning("Slack notificatie mislukt: %s", e)
+
+
+# ─── NS1/VZ detection + Studio capacity ──────────────────
+
+_ns1vz_cache = {}  # key -> {"data": ..., "ts": float}
+_ns1vz_cache_lock = threading.Lock()
+CACHE_TTL_SECONDS = 180  # 3 minutes
+
+
+def _get_cached(key: str):
+    """Get a value from the NS1/VZ cache if not expired."""
+    with _ns1vz_cache_lock:
+        entry = _ns1vz_cache.get(key)
+        if entry and (_time.time() - entry["ts"]) < CACHE_TTL_SECONDS:
+            return entry["data"]
+    return None
+
+
+def _set_cached(key: str, data):
+    """Store a value in the NS1/VZ cache."""
+    with _ns1vz_cache_lock:
+        _ns1vz_cache[key] = {"data": data, "ts": _time.time()}
+        # Cleanup old entries (older than 10 min)
+        cutoff = _time.time() - 600
+        expired = [k for k, v in _ns1vz_cache.items() if v["ts"] < cutoff]
+        for k in expired:
+            del _ns1vz_cache[k]
+
+
+def fetch_sessions_for_date(date_str: str) -> list[dict]:
+    """Fetch all sessions for a given date from the Trainin business API.
+
+    Paginate through the /sessions endpoint (max 100/page) and filter
+    client-side to only the requested date.
+
+    Returns list of parsed session dicts with:
+        id, title, start, end, instructor_id, instructor_names,
+        location_id, status, listing_id
+    """
+    cache_key = f"sessions_{date_str}"
+    cached = _get_cached(cache_key)
+    if cached is not None:
+        logger.debug("Cache hit for sessions %s (%d sessions)", date_str, len(cached))
+        return cached
+
+    api = get_trainin_client()
+    sessions = []
+    page = 1
+    max_pages = 5  # Safety limit
+
+    while page <= max_pages:
+        result = api.get("/sessions", params={
+            "filter[from]": date_str,
+            "filter[to]": date_str,
+            "per_page": 100,
+            "page": page,
+        })
+
+        data = result.get("data", [])
+        if not data:
+            break
+
+        found_target = False
+        past_target = False
+
+        for s in data:
+            attrs = s.get("attributes", {})
+            start = attrs.get("start", "")
+            session_date = start[:10] if len(start) >= 10 else ""
+
+            if session_date == date_str:
+                found_target = True
+
+                # Get instructor ID from relationships
+                rels = s.get("relationships", {})
+                instr_data = rels.get("instructors", {}).get("data", [])
+                instructor_id = int(instr_data[0]["id"]) if instr_data else None
+
+                # Get listing ID from relationships
+                listing_id = rels.get("listing", {}).get("data", {}).get("id")
+
+                # Get location ID from relationships
+                loc_data = rels.get("location", {}).get("data", {})
+                location_id = loc_data.get("id") if loc_data else None
+
+                sessions.append({
+                    "id": s.get("id"),
+                    "title": attrs.get("title", ""),
+                    "start": start,
+                    "end": attrs.get("end", ""),
+                    "time": start[11:16] if len(start) >= 16 else "",
+                    "status": attrs.get("status", ""),
+                    "instructor_id": instructor_id,
+                    "instructor_names": attrs.get("instructor_names", []),
+                    "location_id": location_id,
+                    "listing_id": listing_id,
+                })
+
+            elif found_target and session_date > date_str:
+                # We've moved past the target date — stop
+                past_target = True
+                break
+
+        if past_target or len(data) < 100:
+            break
+
+        page += 1
+
+    logger.info("Fetched %d sessions for %s (%d pages)", len(sessions), date_str, page)
+    _set_cached(cache_key, sessions)
+    return sessions
+
+
+def _is_ns1(title: str) -> bool:
+    """Check if a session title indicates NS1 (No Show 1)."""
+    return "NS1" in title.upper()
+
+
+def _is_vz(title: str) -> bool:
+    """Check if a session title indicates VZ (Verzet/late cancel)."""
+    t = title.upper()
+    return t.startswith("VZ ") or " VZ " in t
+
+
+def _is_pt_session(title: str) -> bool:
+    """Check if a session uses a studio PT spot (for capacity counting)."""
+    t = title.lower()
+    return "personal training" in t or "proeftraining" in t
+
+
+def detect_ns1_vz_slots(sessions: list[dict], date_str: str) -> list[dict]:
+    """Detect NS1/VZ slots from sessions.
+
+    NS1 = No Show 1 (client didn't show, slot physically free)
+    VZ = Verzet (client cancelled late, slot rebookable)
+
+    Returns list of slot dicts that can be merged with regular available slots.
+    Labels are stripped for client-facing view (just shown as normal available time).
+    """
+    now = datetime.now()
+    slots = []
+
+    for s in sessions:
+        # Skip cancelled sessions
+        status = (s.get("status") or "").lower()
+        if status in ("cancelled", "canceled", "declined"):
+            continue
+
+        title = s.get("title", "")
+        slot_type = None
+        if _is_ns1(title):
+            slot_type = "ns1"
+        elif _is_vz(title):
+            slot_type = "vz"
+
+        if not slot_type:
+            continue
+
+        # Skip slots in the past
+        time_str = s.get("time", "")
+        if time_str:
+            try:
+                slot_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+                if slot_dt < now:
+                    continue
+            except ValueError:
+                pass
+
+        # Need instructor_id to create a bookable slot
+        instructor_id = s.get("instructor_id")
+        if not instructor_id:
+            continue
+
+        # Get instructor name
+        instructor_names = s.get("instructor_names", [])
+        instructor_name = instructor_names[0] if instructor_names else ""
+
+        # Calculate end time (start + 60 min for regular, +30 for "30 min" sessions)
+        end_time = ""
+        if s.get("end") and len(s["end"]) >= 16:
+            end_time = s["end"][11:16]
+
+        # Build slot in same format as regular schedule slots
+        # Client-facing: no NS1/VZ labels, just show as normal available time
+        slots.append({
+            "start": time_str,
+            "end": end_time,
+            "start_full": s.get("start", ""),
+            "instructor": instructor_name,
+            "instructor_id": instructor_id,
+            "key": f"{DEFAULT_LOCATION_ID}_{instructor_id}",
+            "type": slot_type,  # internal tracking only, not shown to client
+        })
+
+    logger.info("Detected %d NS1/VZ slots for %s", len(slots), date_str)
+    return slots
+
+
+def get_occupancy_for_date(sessions: list[dict]) -> dict[str, int]:
+    """Calculate studio occupancy per timeslot.
+
+    Counts active PT sessions at each time, excluding:
+    - NS1/VZ slots (those spots are actually free)
+    - Online-only trainers (not in studio)
+    - Cancelled sessions
+    - Non-PT sessions (voedingscoaching, shifts, etc.)
+
+    Returns dict like {"10:00": 4, "10:30": 6, ...}
+    """
+    occupancy = {}
+
+    for s in sessions:
+        # Skip cancelled
+        status = (s.get("status") or "").lower()
+        if status in ("cancelled", "canceled", "declined"):
+            continue
+
+        title = s.get("title", "")
+
+        # Skip NS1/VZ (those slots are free)
+        if _is_ns1(title) or _is_vz(title):
+            continue
+
+        # Only count PT sessions (uses studio spot)
+        if not _is_pt_session(title):
+            continue
+
+        # Skip online-only trainers
+        instructor_names = s.get("instructor_names", [])
+        if instructor_names and instructor_names[0] in ONLINE_ONLY_TRAINERS:
+            continue
+
+        # Count this session at its timeslot
+        time_str = s.get("time", "")
+        if time_str:
+            occupancy[time_str] = occupancy.get(time_str, 0) + 1
+
+    return occupancy
+
+
+def get_availability_with_ns1vz(date_str: str, listing_id: int) -> dict:
+    """Get availability data enhanced with NS1/VZ slots and capacity filtering.
+
+    Returns dict with:
+        ns1_vz_slots: list of extra available slots from NS1/VZ
+        occupancy: dict of timeslot -> count
+        capacity: int (max PT sessions)
+    """
+    cache_key = f"availability_{date_str}"
+    cached = _get_cached(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        sessions = fetch_sessions_for_date(date_str)
+        ns1_vz_slots = detect_ns1_vz_slots(sessions, date_str)
+        occupancy = get_occupancy_for_date(sessions)
+
+        result = {
+            "ns1_vz_slots": ns1_vz_slots,
+            "occupancy": occupancy,
+            "capacity": STUDIO_CAPACITY,
+        }
+
+        _set_cached(cache_key, result)
+        return result
+
+    except Exception as e:
+        logger.warning("NS1/VZ detection failed for %s: %s", date_str, e)
+        return {
+            "ns1_vz_slots": [],
+            "occupancy": {},
+            "capacity": STUDIO_CAPACITY,
+        }
 
 
 # ─── Hoofdfunctie ─────────────────────────────────────────

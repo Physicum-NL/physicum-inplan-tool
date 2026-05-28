@@ -23,6 +23,12 @@ KENNISMAKEN_LISTING = {"hid": "LNV3K9", "id": 51876, "name": "Telefonisch kennis
 # Locatie
 DEFAULT_LOCATION_ID = 908  # Physicum, Emmaplein 2
 
+# Studio capacity — max simultaneous PT sessions at Emmaplein
+STUDIO_CAPACITY = 6
+
+# Online-only trainers — not in studio, don't count toward capacity
+ONLINE_ONLY_TRAINERS = {"Rochelle", "Romy Schmidt"}
+
 # Prijs (alleen weergave, geen betaling)
 INTRO_PRICE = "99"
 INTRO_PRICE_LABEL = "\u20ac99"

@@ -17,6 +17,7 @@ from booking_service import (
     is_duplicate_booking,
     reset_client,
     get_trainin_client,
+    get_availability_with_ns1vz,
 )
 from config import (
     TRAININ_API_PUBLIC,
@@ -29,6 +30,7 @@ from config import (
     DEBUG,
     SERVER_URL,
     HEALTHCHECK_PING_URL,
+    STUDIO_CAPACITY,
 )
 
 app = Flask(__name__)
@@ -135,10 +137,20 @@ def get_dates(listing_id):
 
 @app.route("/api/slots/<int:listing_id>")
 def get_slots(listing_id):
-    """Haal beschikbare tijdsloten op voor een listing op een datum."""
+    """Haal beschikbare tijdsloten op voor een listing op een datum.
+
+    Enhanced with NS1/VZ slot detection and studio capacity filtering:
+    - NS1 (No Show) and VZ (Verzet) slots are added as extra available slots
+    - Slots where studio capacity >= 6 PT sessions are filtered out
+    - Only applies to physical-location listings (not kennismaken/phone)
+    """
     date = request.args.get("date")
     if not date:
         return jsonify({"error": "date parameter verplicht", "slots": []}), 400
+
+    # Determine if this listing uses a physical studio spot
+    # Kennismaken (phone call) doesn't need capacity filtering or NS1/VZ
+    is_physical = listing_id != KENNISMAKEN_LISTING["id"]
 
     try:
         r = http.get(
@@ -187,6 +199,62 @@ def get_slots(listing_id):
                 "instructor_id": instructor_ids[0] if instructor_ids else None,
                 "key": item.get("available_keys", [""])[0],
             })
+
+        # ── NS1/VZ + Capacity filtering (only for physical-location listings) ──
+        if is_physical:
+            try:
+                avail = get_availability_with_ns1vz(date, listing_id)
+                ns1_vz_slots = avail.get("ns1_vz_slots", [])
+                occupancy = avail.get("occupancy", {})
+                capacity = avail.get("capacity", STUDIO_CAPACITY)
+
+                # Merge NS1/VZ slots (shown as normal available slots to clients)
+                # Only add if not already in regular slots (same instructor + same time)
+                existing = {(s["start"], s.get("instructor_id")) for s in slots}
+                for ns_slot in ns1_vz_slots:
+                    slot_key = (ns_slot["start"], ns_slot.get("instructor_id"))
+                    if slot_key not in existing:
+                        # Strip internal type field — client sees it as a normal slot
+                        clean_slot = {
+                            "start": ns_slot["start"],
+                            "end": ns_slot["end"],
+                            "start_full": ns_slot["start_full"],
+                            "instructor": ns_slot["instructor"],
+                            "instructor_id": ns_slot["instructor_id"],
+                            "key": ns_slot["key"],
+                        }
+                        slots.append(clean_slot)
+                        existing.add(slot_key)
+
+                # Filter out slots where studio is at capacity
+                filtered_slots = []
+                for s in slots:
+                    time = s["start"]
+                    if occupancy.get(time, 0) >= capacity:
+                        logger.debug(
+                            "Slot %s filtered: studio at capacity (%d/%d)",
+                            time, occupancy.get(time, 0), capacity,
+                        )
+                        continue
+                    filtered_slots.append(s)
+
+                slots = filtered_slots
+
+            except Exception as e:
+                logger.warning("NS1/VZ enrichment failed, returning regular slots: %s", e)
+
+        # Deduplicate by time — frontend only shows times, not trainers
+        # Keep first slot per time (regular slots before NS1/VZ)
+        seen_times = set()
+        unique_slots = []
+        for s in slots:
+            if s["start"] not in seen_times:
+                seen_times.add(s["start"])
+                unique_slots.append(s)
+        slots = unique_slots
+
+        # Sort by time
+        slots.sort(key=lambda s: s["start"])
 
         return jsonify({"slots": slots, "date": date})
 
