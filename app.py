@@ -48,13 +48,20 @@ PUBLIC_HEADERS = {
 # ─── Pagina's ────────────────────────────────────────────
 
 @app.route("/")
-@app.route("/en")
-def index():
-    """Serveer de wizard-pagina (NL of EN)."""
+def home():
+    """Eenvoudige landingspagina met alleen het Physicum logo."""
+    import time
+    return render_template("home.html", cache_bust=int(time.time()))
+
+
+@app.route("/introductie")
+@app.route("/en/introductie")
+def introductie():
+    """Introductie-pakket inplan wizard (3 sessies, NL of EN)."""
     import time
     lang = "en" if request.path.startswith("/en") else "nl"
     return render_template(
-        "index.html",
+        "introductie.html",
         listings=LISTINGS,
         lang=lang,
         firstname=request.args.get("firstname", ""),
