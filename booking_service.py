@@ -567,7 +567,7 @@ def send_slack_notification(
 
 _ns1vz_cache = {}  # key -> {"data": ..., "ts": float}
 _ns1vz_cache_lock = threading.Lock()
-CACHE_TTL_SECONDS = 180  # 3 minutes
+CACHE_TTL_SECONDS = 60  # 1 minute — short so new bookings are reflected quickly
 
 
 def _get_cached(key: str):
@@ -692,16 +692,39 @@ def _is_pt_session(title: str) -> bool:
 
 
 def detect_ns1_vz_slots(sessions: list[dict], date_str: str) -> list[dict]:
-    """Detect NS1/VZ slots from sessions.
+    """Detect NS1/VZ slots from sessions, with overlap filtering.
 
     NS1 = No Show 1 (client didn't show, slot physically free)
     VZ = Verzet (client cancelled late, slot rebookable)
+
+    Overlap fix: a VZ/NS1 booking stays in Trainin even after a new regular
+    booking is made for the same trainer+time. We build an "occupied" set
+    of (trainer, time) from regular bookings and skip any VZ/NS1 where the
+    trainer is already occupied — they're not actually free anymore.
 
     Returns list of slot dicts that can be merged with regular available slots.
     Labels are stripped for client-facing view (just shown as normal available time).
     """
     now = datetime.now()
+
+    # STEP 1: Build occupied set — trainers with a regular (non-VZ/NS1)
+    # booking at a specific time are NOT available for VZ/NS1 slots
+    occupied = set()  # {(trainer_name_lower, time_str)}
+    for s in sessions:
+        status = (s.get("status") or "").lower()
+        if status in ("cancelled", "canceled", "declined"):
+            continue
+        title = s.get("title", "")
+        if _is_ns1(title) or _is_vz(title):
+            continue  # skip VZ/NS1 themselves when building occupied set
+        instructor_names = s.get("instructor_names", [])
+        time_str = s.get("time", "")
+        if instructor_names and time_str:
+            occupied.add((instructor_names[0].lower(), time_str))
+
+    # STEP 2: Detect VZ/NS1 slots, skipping occupied ones
     slots = []
+    skipped = 0
 
     for s in sessions:
         # Skip cancelled sessions
@@ -738,7 +761,16 @@ def detect_ns1_vz_slots(sessions: list[dict], date_str: str) -> list[dict]:
         instructor_names = s.get("instructor_names", [])
         instructor_name = instructor_names[0] if instructor_names else ""
 
-        # Calculate end time (start + 60 min for regular, +30 for "30 min" sessions)
+        # OVERLAP CHECK: skip if trainer already has a regular booking at this time
+        if instructor_name and (instructor_name.lower(), time_str) in occupied:
+            skipped += 1
+            logger.debug(
+                "VZ/NS1 overlap: %s at %s already has regular booking, skipping",
+                instructor_name, time_str,
+            )
+            continue
+
+        # Calculate end time
         end_time = ""
         if s.get("end") and len(s["end"]) >= 16:
             end_time = s["end"][11:16]
@@ -755,7 +787,10 @@ def detect_ns1_vz_slots(sessions: list[dict], date_str: str) -> list[dict]:
             "type": slot_type,  # internal tracking only, not shown to client
         })
 
-    logger.info("Detected %d NS1/VZ slots for %s", len(slots), date_str)
+    if skipped:
+        logger.info("Detected %d NS1/VZ slots for %s (%d skipped due to overlap)", len(slots), date_str, skipped)
+    else:
+        logger.info("Detected %d NS1/VZ slots for %s", len(slots), date_str)
     return slots
 
 
