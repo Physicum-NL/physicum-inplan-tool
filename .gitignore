@@ -7,3 +7,4 @@ discover_api*.py
 .claude/
 venv/
 .env
+.DS_Store
