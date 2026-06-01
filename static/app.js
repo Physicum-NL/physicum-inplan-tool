@@ -389,6 +389,12 @@ async function loadSlots(stepIndex, dateStr) {
 
     container.innerHTML = `<div class="slots-loading">${T.slotsLoading}</div>`;
 
+    // Op mobiel: scroll meteen naar het tijden-blok zodat de gebruiker
+    // direct ziet dat er geladen wordt en niet hoeft te scrollen na keuze.
+    if (window.matchMedia('(max-width: 640px)').matches) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     try {
         const resp = await fetch(`/api/slots/${listingId}?date=${dateStr}`);
         const data = await resp.json();
@@ -462,9 +468,11 @@ function selectSlot(stepIndex, dateStr, slot) {
 
     updateUI();
 
+    // Na slot-keuze: scroll naar het einde van de pagina. De Verder-knop
+    // staat onderaan, dus die komt sowieso in beeld. Idempotent: zit je al
+    // onderaan dan gebeurt er niets meer — geen jitter bij volgende klikken.
     setTimeout(() => {
-        const navBtn = document.getElementById('nav-buttons');
-        if (navBtn) navBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
     }, 100);
 }
 
