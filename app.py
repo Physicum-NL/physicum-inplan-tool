@@ -37,8 +37,10 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-# Shared HTTP client voor publieke API calls (geen auth nodig)
-http = httpx.Client(follow_redirects=True, timeout=30)
+# Shared HTTP client voor publieke API calls (geen auth nodig).
+# Timeout op 10s — Trainin is af en toe traag/flaky; we laten de UI dan een
+# duidelijke foutstaat met retry-knop tonen in plaats van >30s te blijven hangen.
+http = httpx.Client(follow_redirects=True, timeout=10)
 PUBLIC_HEADERS = {
     "Accept": "application/json",
     "X-Requested-With": "XMLHttpRequest",

@@ -52,6 +52,8 @@ const T = {
         evalDone: 'Bedankt! We bellen je op het afgesproken moment om de evaluatie in te plannen.',
         evalEmpty: 'Vul een voorkeurs dag of tijdstip in.',
         calendarLoading: 'Beschikbare dagen laden...',
+        calendarErrorMsg: 'Er ging iets mis bij het laden van de beschikbaarheid. Probeer het opnieuw.',
+        calendarErrorRetry: 'Probeer opnieuw',
         loading: 'Even geduld...',
         errorEmail: 'E-mailadres ontbreekt. Zorg dat je via de juiste link op deze pagina bent gekomen.',
         errorOrder: (n) => `De ${n}e training moet na de ${n-1}e training gepland worden. Ga terug en kies een latere datum.`,
@@ -91,6 +93,8 @@ const T = {
         evalDone: 'Thank you! We\'ll call you at the agreed time to schedule the evaluation.',
         evalEmpty: 'Please enter a preferred day or time.',
         calendarLoading: 'Loading available days...',
+        calendarErrorMsg: 'Something went wrong loading availability. Please try again.',
+        calendarErrorRetry: 'Try again',
         loading: 'Please wait...',
         errorEmail: 'Email address is missing. Make sure you arrived via the correct link.',
         errorOrder: (n) => `Session ${n} must be after session ${n-1}. Go back and choose a later date.`,
@@ -251,12 +255,31 @@ async function renderCalendar(stepIndex) {
     `;
 
     let availableDates = [];
+    let loadFailed = false;
     try {
         const resp = await fetch(`/api/dates/${listingId}?month=${monthStr}`);
         const data = await resp.json();
-        availableDates = data.dates || [];
+        if (!resp.ok || data.error) {
+            loadFailed = true;
+            console.error('Error fetching dates (status %s):', resp.status, data.error || data);
+        } else {
+            availableDates = data.dates || [];
+        }
     } catch (e) {
+        loadFailed = true;
         console.error('Error fetching dates:', e);
+    }
+
+    // Bij een fout: toon een nette fout-staat met retry-knop (hard refresh) en stop verder renderen
+    if (loadFailed) {
+        picker.innerHTML = `
+            <div class="calendar-error">
+                <div class="calendar-error-icon">!</div>
+                <div class="calendar-error-msg">${T.calendarErrorMsg}</div>
+                <button class="calendar-error-retry" onclick="window.location.reload()">${T.calendarErrorRetry}</button>
+            </div>
+        `;
+        return;
     }
 
     const todayObj = new Date();

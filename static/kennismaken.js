@@ -42,6 +42,8 @@ const T = {
         successTitle: 'Je kennismakingsgesprek is ingepland!',
         successSubtitle: 'Je ontvangt een bevestiging per e-mail. We bellen je op het afgesproken moment.',
         calendarLoading: 'Beschikbare dagen laden...',
+        calendarErrorMsg: 'Er ging iets mis bij het laden van de beschikbaarheid. Probeer het opnieuw.',
+        calendarErrorRetry: 'Probeer opnieuw',
         loading: 'Even geduld...',
         errorEmail: 'E-mailadres ontbreekt. Zorg dat je via de juiste link op deze pagina bent gekomen.',
         errorGeneric: 'Er ging iets mis. Controleer je internetverbinding en probeer opnieuw.',
@@ -70,6 +72,8 @@ const T = {
         successTitle: 'Your introduction call is scheduled!',
         successSubtitle: 'You\'ll receive a confirmation by email. We\'ll call you at the agreed time.',
         calendarLoading: 'Loading available days...',
+        calendarErrorMsg: 'Something went wrong loading availability. Please try again.',
+        calendarErrorRetry: 'Try again',
         loading: 'Please wait...',
         errorEmail: 'Email address is missing. Make sure you arrived via the correct link.',
         errorGeneric: 'Something went wrong. Check your internet connection and try again.',
@@ -195,12 +199,31 @@ async function renderCalendar() {
     `;
 
     let availableDates = [];
+    let loadFailed = false;
     try {
         const resp = await fetch(`/api/dates/${listingId}?month=${monthStr}`);
         const data = await resp.json();
-        availableDates = data.dates || [];
+        if (!resp.ok || data.error) {
+            loadFailed = true;
+            console.error('Error fetching dates (status %s):', resp.status, data.error || data);
+        } else {
+            availableDates = data.dates || [];
+        }
     } catch (e) {
+        loadFailed = true;
         console.error('Error fetching dates:', e);
+    }
+
+    // Bij een fout: toon een nette fout-staat met retry-knop (hard refresh) en stop verder renderen
+    if (loadFailed) {
+        picker.innerHTML = `
+            <div class="calendar-error">
+                <div class="calendar-error-icon">!</div>
+                <div class="calendar-error-msg">${T.calendarErrorMsg}</div>
+                <button class="calendar-error-retry" onclick="window.location.reload()">${T.calendarErrorRetry}</button>
+            </div>
+        `;
+        return;
     }
 
     const todayObj = new Date();
