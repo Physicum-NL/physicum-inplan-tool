@@ -852,7 +852,9 @@ h2 {
         flex-direction: column;
     }
 
-    .calendar {
+    .calendar,
+    .calendar-loading,
+    .calendar-error {
         width: 100%;
     }
 
