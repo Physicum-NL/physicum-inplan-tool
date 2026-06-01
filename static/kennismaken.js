@@ -41,6 +41,7 @@ const T = {
         priceNote: 'We bellen je op het gekozen moment. Je ontvangt een bevestiging per e-mail.',
         successTitle: 'Je kennismakingsgesprek is ingepland!',
         successSubtitle: 'Je ontvangt een bevestiging per e-mail. We bellen je op het afgesproken moment.',
+        calendarLoading: 'Beschikbare dagen laden...',
         loading: 'Even geduld...',
         errorEmail: 'E-mailadres ontbreekt. Zorg dat je via de juiste link op deze pagina bent gekomen.',
         errorGeneric: 'Er ging iets mis. Controleer je internetverbinding en probeer opnieuw.',
@@ -68,6 +69,7 @@ const T = {
         priceNote: 'We\'ll call you at the chosen time. You\'ll receive a confirmation by email.',
         successTitle: 'Your introduction call is scheduled!',
         successSubtitle: 'You\'ll receive a confirmation by email. We\'ll call you at the agreed time.',
+        calendarLoading: 'Loading available days...',
         loading: 'Please wait...',
         errorEmail: 'Email address is missing. Make sure you arrived via the correct link.',
         errorGeneric: 'Something went wrong. Check your internet connection and try again.',
@@ -183,6 +185,14 @@ async function renderCalendar() {
 
     const monthStr = `${calendarState.year}${String(calendarState.month + 1).padStart(2, '0')}`;
     const monthLabel = `${MONTHS[calendarState.month]} ${calendarState.year}`;
+
+    // Toon spinner terwijl we beschikbare datums uit Trainin ophalen
+    picker.innerHTML = `
+        <div class="calendar-loading">
+            <div class="spinner-sm"></div>
+            <span>${T.calendarLoading}</span>
+        </div>
+    `;
 
     let availableDates = [];
     try {

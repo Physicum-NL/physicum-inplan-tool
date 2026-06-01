@@ -51,6 +51,7 @@ const T = {
         evalSending: 'Versturen...',
         evalDone: 'Bedankt! We bellen je op het afgesproken moment om de evaluatie in te plannen.',
         evalEmpty: 'Vul een voorkeurs dag of tijdstip in.',
+        calendarLoading: 'Beschikbare dagen laden...',
         loading: 'Even geduld...',
         errorEmail: 'E-mailadres ontbreekt. Zorg dat je via de juiste link op deze pagina bent gekomen.',
         errorOrder: (n) => `De ${n}e training moet na de ${n-1}e training gepland worden. Ga terug en kies een latere datum.`,
@@ -89,6 +90,7 @@ const T = {
         evalSending: 'Sending...',
         evalDone: 'Thank you! We\'ll call you at the agreed time to schedule the evaluation.',
         evalEmpty: 'Please enter a preferred day or time.',
+        calendarLoading: 'Loading available days...',
         loading: 'Please wait...',
         errorEmail: 'Email address is missing. Make sure you arrived via the correct link.',
         errorOrder: (n) => `Session ${n} must be after session ${n-1}. Go back and choose a later date.`,
@@ -239,6 +241,14 @@ async function renderCalendar(stepIndex) {
 
     const monthStr = `${state.year}${String(state.month + 1).padStart(2, '0')}`;
     const monthLabel = `${MONTHS[state.month]} ${state.year}`;
+
+    // Toon spinner terwijl we beschikbare datums uit Trainin ophalen
+    picker.innerHTML = `
+        <div class="calendar-loading">
+            <div class="spinner-sm"></div>
+            <span>${T.calendarLoading}</span>
+        </div>
+    `;
 
     let availableDates = [];
     try {
