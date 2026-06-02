@@ -94,6 +94,20 @@ document.addEventListener('DOMContentLoaded', () => {
     calendarState = { year: now.getFullYear(), month: now.getMonth() };
     renderCalendar();
     updateUI();
+
+    // Notify Slack that someone started the tool
+    const params = new URLSearchParams(window.location.search);
+    fetch('/api/session-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            flow: 'kennismaken',
+            firstname: params.get('firstname') || '',
+            lastname: params.get('lastname') || '',
+            email: params.get('email') || '',
+            lang: LANG,
+        }),
+    }).catch(() => {});
 });
 
 function applyStaticTranslations() {

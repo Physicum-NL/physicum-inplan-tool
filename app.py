@@ -31,6 +31,7 @@ from config import (
     SERVER_URL,
     HEALTHCHECK_PING_URL,
     STUDIO_CAPACITY,
+    SLACK_WEBHOOK_URL,
 )
 
 app = Flask(__name__)
@@ -117,6 +118,62 @@ def uitleg():
 
 
 # ─── API Proxy Endpoints ─────────────────────────────────
+
+@app.route("/api/session-start", methods=["POST"])
+def session_start():
+    """Log wanneer iemand de tool opent — stuurt Slack melding voor monitoring."""
+    data = request.get_json() or {}
+    flow = data.get("flow", "onbekend")
+    firstname = data.get("firstname", "")
+    lastname = data.get("lastname", "")
+    email = data.get("email", "")
+    lang = data.get("lang", "nl")
+
+    name = f"{firstname} {lastname}".strip() or "Onbekend"
+
+    flow_labels = {
+        "introductie": ":calendar: Introductie-pakket",
+        "viavia": ":gift: Via Via Cadeau",
+        "kennismaken": ":telephone_receiver: Telefonisch kennismaken",
+    }
+    flow_label = flow_labels.get(flow, flow)
+
+    logger.info("Session start: %s (%s) — flow: %s", name, email, flow)
+
+    if SLACK_WEBHOOK_URL:
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{flow_label} — *{name}* is begonnen met inplannen"
+                        + (f"\n_{email}_" if email else "")
+                    ),
+                },
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Sessie gestart op {datetime.now().strftime('%d %b %Y om %H:%M')} — taal: {lang}",
+                    }
+                ],
+            },
+        ]
+
+        try:
+            httpx.post(
+                SLACK_WEBHOOK_URL,
+                json={"text": f"{name} is begonnen met {flow}", "blocks": blocks},
+                timeout=5,
+            )
+        except Exception:
+            pass  # Nooit falen richting gebruiker
+
+    return jsonify({"ok": True})
+
 
 @app.route("/api/dates/<int:listing_id>")
 def get_dates(listing_id):
