@@ -7,4 +7,5 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - ./.cookie_cache.json:/app/.cookie_cache.json
     restart: unless-stopped
