@@ -26,12 +26,53 @@ import httpx
 from config import (
     SLACK_WEBHOOK_URL, TRAININ_BASE, DEFAULT_LOCATION_ID,
     STUDIO_CAPACITY, ONLINE_ONLY_TRAINERS,
+    COMM_PORTAAL_WEBHOOK_URL, COMM_PORTAAL_WEBHOOK_SECRET,
 )
 from trainin_client import TraininClient
 
 logger = logging.getLogger(__name__)
 
 PENDING_LOG = Path(__file__).parent / "pending_bookings.jsonl"
+
+
+def notify_portaal(client_data: dict, sessions: list[dict], booking_type: str = "introductie") -> None:
+    """Stuurt een webhook naar het communicatie portaal zodat de boeking
+    zichtbaar wordt in de CRM-extensie voor medewerkers."""
+    if not COMM_PORTAAL_WEBHOOK_SECRET:
+        logger.debug("COMM_PORTAAL_WEBHOOK_SECRET niet geconfigureerd, portaal webhook overgeslagen")
+        return
+
+    session_list = [
+        {
+            "sessie_naam": s.get("key", s.get("listing_id", "")),
+            "datum":       s.get("date", ""),
+            "tijd":        s.get("start", "")[:5] if s.get("start") else "",
+            "trainer":     s.get("instructor", ""),
+        }
+        for s in sessions
+    ]
+
+    payload = {
+        "naam":         f"{client_data.get('first_name', '')} {client_data.get('last_name', '')}".strip(),
+        "email":        client_data.get("email", ""),
+        "phone":        client_data.get("phone", ""),
+        "booking_type": booking_type,
+        "sessions":     session_list,
+    }
+
+    try:
+        resp = httpx.post(
+            COMM_PORTAAL_WEBHOOK_URL,
+            json=payload,
+            headers={"x-webhook-secret": COMM_PORTAAL_WEBHOOK_SECRET},
+            timeout=8,
+        )
+        if resp.status_code == 200:
+            logger.info("Portaal webhook verstuurd voor %s", payload["naam"])
+        else:
+            logger.warning("Portaal webhook fout %d: %s", resp.status_code, resp.text[:200])
+    except Exception as e:
+        logger.warning("Portaal webhook mislukt: %s", e)
 MAX_LOG_SIZE_MB = 10  # Roteer log als het groter wordt dan 10 MB
 
 
@@ -209,33 +250,18 @@ def create_client_in_trainin(client_data: dict) -> Optional[dict]:
             },
         }
 
-        headers = api._headers()
-        headers["Content-Type"] = "application/json"
+        # api.post() handles auth retry on 419/401 automatically
+        data = api.post("/clients/new/invite", data=payload)
 
-        resp = api._http.post(
-            f"{api.api_base}/clients/new/invite",
-            headers=headers,
-            json=payload,
-            timeout=30,
+        client = data.get("data", {})
+        client_id = client.get("id")
+        client_hid = client.get("attributes", {}).get("hid", "")
+        logger.info(
+            "Client aangemaakt in Trainin: %s %s (ID: %s, HID: %s)",
+            client_data.get("first_name"), client_data.get("last_name"),
+            client_id, client_hid,
         )
-
-        if resp.status_code == 201:
-            data = resp.json()
-            client = data.get("data", {})
-            client_id = client.get("id")
-            client_hid = client.get("attributes", {}).get("hid", "")
-            logger.info(
-                "Client aangemaakt in Trainin: %s %s (ID: %s, HID: %s)",
-                client_data.get("first_name"), client_data.get("last_name"),
-                client_id, client_hid,
-            )
-            return client
-        else:
-            body = resp.text[:300]
-            logger.warning(
-                "Client aanmaken mislukt (%d): %s", resp.status_code, body
-            )
-            return None
+        return client
 
     except Exception as e:
         logger.warning("Client aanmaken mislukt: %s", e)
@@ -306,52 +332,37 @@ def create_session_in_trainin(
         if instructor_id:
             payload["instructor"] = int(instructor_id)
 
-        headers = api._headers()
-        headers["Content-Type"] = "application/json"
-
         logger.info(
             "Sessie aanmaken: listing=%s, %s %s-%s, client=%s, instructor=%s",
             session_data["listing_id"], date, start_time, end_time,
             client_id, instructor_id,
         )
 
-        resp = api._http.post(
-            f"{api.api_base}/sessions",
-            headers=headers,
-            json=payload,
-            timeout=30,
+        # api.post() handles auth retry on 419/401 automatically
+        data = api.post("/sessions", data=payload)
+
+        session = data.get("data", {})
+        session_id = session.get("id")
+
+        # Zoek booking ID in included data
+        booking_id = None
+        for inc in data.get("included", []):
+            if inc.get("type") == "bookings":
+                booking_id = inc.get("id")
+                break
+
+        logger.info(
+            "Sessie aangemaakt: ID %s, booking ID %s, status %s",
+            session_id, booking_id,
+            session.get("attributes", {}).get("status", "?"),
         )
 
-        if resp.status_code == 201:
-            data = resp.json()
-            session = data.get("data", {})
-            session_id = session.get("id")
-
-            # Zoek booking ID in included data
-            booking_id = None
-            for inc in data.get("included", []):
-                if inc.get("type") == "bookings":
-                    booking_id = inc.get("id")
-                    break
-
-            logger.info(
-                "Sessie aangemaakt: ID %s, booking ID %s, status %s",
-                session_id, booking_id,
-                session.get("attributes", {}).get("status", "?"),
-            )
-
-            return {
-                "session_id": session_id,
-                "booking_id": booking_id,
-                "status": "created",
-                "trainin_status": session.get("attributes", {}).get("status"),
-            }
-        else:
-            body = resp.text[:500]
-            logger.warning(
-                "Sessie aanmaken mislukt (%d): %s", resp.status_code, body
-            )
-            return None
+        return {
+            "session_id": session_id,
+            "booking_id": booking_id,
+            "status": "created",
+            "trainin_status": session.get("attributes", {}).get("status"),
+        }
 
     except Exception as e:
         logger.warning("Sessie aanmaken mislukt: %s", e, exc_info=True)
@@ -941,6 +952,9 @@ def book_intro_sessions(client_data: dict, sessions: list[dict]) -> dict:
         client_data, sessions, trainin_client, client_created, session_results
     )
 
+    # ── Stap 6: Meld aan communicatie portaal ──
+    notify_portaal(client_data, sessions, booking_type="introductie")
+
     # ── Log samenvatting ──
     session_strs = [f"{s['date']} {s['start']}" for s in sessions]
     if trainin_client:
@@ -1036,6 +1050,9 @@ def book_viavia_sessions(client_data: dict, sessions: list[dict]) -> dict:
     send_viavia_slack_notification(
         client_data, sessions, trainin_client, client_created, session_results
     )
+
+    # ── Stap 6: Meld aan communicatie portaal ──
+    notify_portaal(client_data, sessions, booking_type="viavia")
 
     # ── Log samenvatting ──
     session_strs = [f"{s['date']} {s['start']}" for s in sessions]
@@ -1290,6 +1307,9 @@ def book_kennismaken_session(client_data: dict, session_data: dict) -> dict:
     send_kennismaken_slack_notification(
         client_data, session_data, trainin_client, client_created, session_result
     )
+
+    # ── Stap 6: Meld aan communicatie portaal ──
+    notify_portaal(client_data, [session_data], booking_type="kennismaken")
 
     # ── Log samenvatting ──
     if trainin_client:

@@ -48,3 +48,8 @@ SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 # Healthchecks.io ping URL — optioneel, voor monitoring van de monitoring
 # Maak gratis aan op https://healthchecks.io en plak de ping URL hier
 HEALTHCHECK_PING_URL = os.environ.get("HEALTHCHECK_PING_URL", "")
+
+# Communicatie Portaal webhook — meldt aan het portaal als iemand zich heeft ingepland
+# Portaal endpoint: POST /api/webhooks/inplan-booking
+COMM_PORTAAL_WEBHOOK_URL    = os.environ.get("COMM_PORTAAL_WEBHOOK_URL", "https://physicum-communicatie-portaal.vercel.app/api/webhooks/inplan-booking")
+COMM_PORTAAL_WEBHOOK_SECRET = os.environ.get("COMM_PORTAAL_WEBHOOK_SECRET", "")
