@@ -20,7 +20,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd /opt/physicum-inplan-tool
+            git reset --hard HEAD
             git pull --ff-only
             docker compose up -d --build
             sleep 5
