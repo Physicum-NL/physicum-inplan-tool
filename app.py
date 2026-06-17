@@ -274,23 +274,27 @@ def get_slots(listing_id):
                 occupancy = avail.get("occupancy", {})
                 capacity = avail.get("capacity", STUDIO_CAPACITY)
 
-                # Merge NS1/VZ slots (shown as normal available slots to clients)
-                # Only add if not already in regular slots (same instructor + same time)
-                existing = {(s["start"], s.get("instructor_id")) for s in slots}
+                # Merge NS1/VZ slots — these get priority over regular slots
+                # so the freed-up trainer gap gets filled first
+                ns1vz_times = set()
+                merged = []
                 for ns_slot in ns1_vz_slots:
-                    slot_key = (ns_slot["start"], ns_slot.get("instructor_id"))
-                    if slot_key not in existing:
-                        # Strip internal type field — client sees it as a normal slot
-                        clean_slot = {
-                            "start": ns_slot["start"],
-                            "end": ns_slot["end"],
-                            "start_full": ns_slot["start_full"],
-                            "instructor": ns_slot["instructor"],
-                            "instructor_id": ns_slot["instructor_id"],
-                            "key": ns_slot["key"],
-                        }
-                        slots.append(clean_slot)
-                        existing.add(slot_key)
+                    clean_slot = {
+                        "start": ns_slot["start"],
+                        "end": ns_slot["end"],
+                        "start_full": ns_slot["start_full"],
+                        "instructor": ns_slot["instructor"],
+                        "instructor_id": ns_slot["instructor_id"],
+                        "key": ns_slot["key"],
+                    }
+                    merged.append(clean_slot)
+                    ns1vz_times.add(ns_slot["start"])
+
+                # Add regular slots that don't overlap with NS1/VZ times
+                for s in slots:
+                    if s["start"] not in ns1vz_times:
+                        merged.append(s)
+                slots = merged
 
                 # Filter out slots where studio is at capacity
                 filtered_slots = []
@@ -310,7 +314,7 @@ def get_slots(listing_id):
                 logger.warning("NS1/VZ enrichment failed, returning regular slots: %s", e)
 
         # Deduplicate by time — frontend only shows times, not trainers
-        # Keep first slot per time (regular slots before NS1/VZ)
+        # NS1/VZ slots are first in list so they get priority
         seen_times = set()
         unique_slots = []
         for s in slots:
