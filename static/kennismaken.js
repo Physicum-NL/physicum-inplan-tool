@@ -95,19 +95,23 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     updateUI();
 
-    // Notify Slack that someone started the tool
+    // Notify Slack that someone started the tool (skip if no email or already notified)
     const params = new URLSearchParams(window.location.search);
-    fetch('/api/session-start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            flow: 'kennismaken',
-            firstname: params.get('firstname') || '',
-            lastname: params.get('lastname') || '',
-            email: params.get('email') || '',
-            lang: LANG,
-        }),
-    }).catch(() => {});
+    const email = params.get('email') || '';
+    if (email && !sessionStorage.getItem('session_start_sent')) {
+        sessionStorage.setItem('session_start_sent', '1');
+        fetch('/api/session-start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                flow: 'kennismaken',
+                firstname: params.get('firstname') || '',
+                lastname: params.get('lastname') || '',
+                email: email,
+                lang: LANG,
+            }),
+        }).catch(() => {});
+    }
 });
 
 function applyStaticTranslations() {
