@@ -102,23 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateUI();
 
-    // Notify Slack that someone started the tool (skip if no email or already notified)
+    // Notify Slack that someone started the tool
     const params = new URLSearchParams(window.location.search);
-    const email = params.get('email') || '';
-    if (email && !sessionStorage.getItem('session_start_sent')) {
-        sessionStorage.setItem('session_start_sent', '1');
-        fetch('/api/session-start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                flow: 'viavia',
-                firstname: params.get('firstname') || '',
-                lastname: params.get('lastname') || '',
-                email: email,
-                lang: LANG,
-            }),
-        }).catch(() => {});
-    }
+    fetch('/api/session-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            flow: 'viavia',
+            firstname: params.get('firstname') || '',
+            lastname: params.get('lastname') || '',
+            email: params.get('email') || '',
+            lang: LANG,
+        }),
+    }).catch(() => {});
 });
 
 function applyStaticTranslations() {
