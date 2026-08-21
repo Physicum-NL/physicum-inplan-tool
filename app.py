@@ -532,18 +532,18 @@ def health_check():
     # Check 2: Geauthenticeerde Trainin API (staff) — met auto-healing
     try:
         api = get_trainin_client()
-        result = api.get("/clients", params={"per_page": 1})
-        total = result.get("meta", {}).get("total", 0)
-        checks["trainin_auth_api"] = {"ok": True, "detail": f"OK — {total} clients in systeem"}
+        result = api.get("/clients/search", params={"search": "test"})
+        count = len(result.get("clients", []))
+        checks["trainin_auth_api"] = {"ok": True, "detail": f"OK — auth werkt ({count} search results)"}
     except Exception as e:
         # Auto-heal: reset client, forceer nieuwe login, en probeer opnieuw
         logger.warning("Auth API check mislukt, auto-healing: %s", e)
         try:
             reset_client()
             api = get_trainin_client()
-            result = api.get("/clients", params={"per_page": 1})
-            total = result.get("meta", {}).get("total", 0)
-            checks["trainin_auth_api"] = {"ok": True, "detail": f"OK — hersteld na re-login, {total} clients"}
+            result = api.get("/clients/search", params={"search": "test"})
+            count = len(result.get("clients", []))
+            checks["trainin_auth_api"] = {"ok": True, "detail": f"OK — hersteld na re-login ({count} search results)"}
         except Exception as e2:
             checks["trainin_auth_api"] = {"ok": False, "detail": str(e2)[:100]}
 

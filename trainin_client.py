@@ -239,7 +239,7 @@ class TraininClient:
 
         # Quick API test
         resp = client.get(
-            f"{self.api_base}/orders/outstanding",
+            f"{self.base_url}/clients/search",
             headers={
                 "Accept": "application/json",
                 "Cookie": cookie_str,
@@ -248,7 +248,7 @@ class TraininClient:
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": f"{self.base_url}/finances/outstanding",
             },
-            params={"page": 1},
+            params={"search": "test"},
         )
 
         if resp.status_code == 200:
@@ -354,7 +354,7 @@ class TraininClient:
 
             # Verifieer met een API call
             test_resp = client.get(
-                f"{self.api_base}/orders/outstanding",
+                f"{self.base_url}/clients/search",
                 headers={
                     "Accept": "application/json",
                     "Cookie": self._cookie,
@@ -363,7 +363,7 @@ class TraininClient:
                     "X-Requested-With": "XMLHttpRequest",
                     "Referer": f"{self.base_url}/finances/outstanding",
                 },
-                params={"page": 1},
+                params={"search": "test"},
             )
 
             if test_resp.status_code == 200:
@@ -521,12 +521,13 @@ class TraininClient:
                             existing = {}  # Start vers bij corrupt bestand
                     existing[key] = value
 
-                    # Schrijf eerst naar temp bestand, dan rename (atomic op Linux)
-                    tmp_path = str(COOKIE_FILE) + ".tmp"
-                    with open(tmp_path, "w") as f:
+                    # Direct write (bind-mounted files can't be atomically replaced)
+                    with open(str(COOKIE_FILE), "w") as f:
                         json.dump(existing, f)
-                    os.chmod(tmp_path, 0o600)
-                    os.replace(tmp_path, str(COOKIE_FILE))
+                    try:
+                        os.chmod(str(COOKIE_FILE), 0o600)
+                    except OSError:
+                        pass
                 except Exception as e:
                     print(f"[TraininClient] Cookie opslaan mislukt: {e}")
 
