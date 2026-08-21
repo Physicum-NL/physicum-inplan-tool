@@ -3,7 +3,7 @@
 import os
 
 # Trainin API
-TRAININ_BASE = "https://physicum.trainin.app"
+TRAININ_BASE = "https://physicum-company.trainin.app"
 TRAININ_API_PUBLIC = f"{TRAININ_BASE}/api/v2/AR7DJ/client"
 TRAININ_API_BUSINESS = f"{TRAININ_BASE}/api/v2/AR7DJ/business"
 

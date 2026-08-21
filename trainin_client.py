@@ -34,7 +34,7 @@ import httpx
 # ─── Standaard configuratie ───
 
 DEFAULT_LOGIN_URL = "https://trainin.app/login"
-DEFAULT_SUBDOMAIN = "physicum"
+DEFAULT_SUBDOMAIN = "physicum-company"
 DEFAULT_BASE_URL = f"https://{DEFAULT_SUBDOMAIN}.trainin.app"
 DEFAULT_API_BASE = f"{DEFAULT_BASE_URL}/api/v2/AR7DJ/business"
 KEYCHAIN_SERVICE = "trainin-reminders"
@@ -410,7 +410,7 @@ class TraininClient:
                 if page.is_visible('input[name="remember"]'):
                     page.check('input[name="remember"]')
 
-                page.click('button[type="submit"]')
+                page.click('button:has-text("Login")')
 
                 try:
                     page.wait_for_url(f"**{self.subdomain}**", timeout=15000)

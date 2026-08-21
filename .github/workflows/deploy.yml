@@ -24,6 +24,7 @@ jobs:
             cd /opt/physicum-inplan-tool
             git reset --hard HEAD
             git pull --ff-only
+            echo '{}' > .cookie_cache.json
             docker compose up -d --build
             sleep 5
             curl -fsS http://localhost:5001/api/health
