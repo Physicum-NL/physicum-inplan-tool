@@ -25,6 +25,7 @@ import httpx
 
 from config import (
     SLACK_WEBHOOK_URL, TRAININ_BASE, DEFAULT_LOCATION_ID,
+    DEFAULT_LOCATION_PID, LISTING_ID_TO_PID,
     STUDIO_CAPACITY, ONLINE_ONLY_TRAINERS,
     COMM_PORTAAL_WEBHOOK_URL, COMM_PORTAAL_WEBHOOK_SECRET,
 )
@@ -177,20 +178,96 @@ def reset_client():
             _client = None
 
 
+# ─── Form config cache (instructor/activity PID mapping) ──
+
+_form_config = None
+_form_config_lock = threading.Lock()
+
+
+def _load_form_config():
+    """Lazy-load session creation form config from Trainin. Caches result."""
+    global _form_config
+    if _form_config is not None:
+        return _form_config
+
+    with _form_config_lock:
+        if _form_config is not None:
+            return _form_config
+
+        try:
+            api = get_trainin_client()
+            data = api.get("/calendar/sessions/create")
+            _form_config = data.get("formConfig", data)
+            logger.info("Form config geladen: %d instructors, %d activities",
+                        len(_form_config.get("instructor", {}).get("options", [])),
+                        len(_form_config.get("activity", {}).get("options", [])))
+        except Exception as e:
+            logger.warning("Form config laden mislukt: %s", e)
+            _form_config = {}
+
+    return _form_config
+
+
+def _get_instructor_pid(name: str) -> Optional[str]:
+    """Look up instructor PID by name using the form config."""
+    config = _load_form_config()
+    options = config.get("instructor", {}).get("options", [])
+    name_lower = name.lower().strip()
+    for opt in options:
+        if opt.get("label", "").lower().strip() == name_lower:
+            return opt.get("value")
+    logger.warning("Instructor PID niet gevonden voor: %s", name)
+    return None
+
+
+def _get_location_pid(key: str) -> str:
+    """Extract location PID from a slot key or return default."""
+    if key and "_" in key:
+        loc_id_str = key.split("_")[0]
+        try:
+            loc_id = int(loc_id_str)
+            if loc_id == DEFAULT_LOCATION_ID:
+                return DEFAULT_LOCATION_PID
+        except ValueError:
+            if len(loc_id_str) >= 4 and loc_id_str[0].isalpha():
+                return loc_id_str
+    return DEFAULT_LOCATION_PID
+
+
 # ─── Client zoeken ────────────────────────────────────────
 
 def find_client_by_email(email: str) -> Optional[dict]:
     """Zoek een bestaande client in Trainin op email.
 
-    Returns het client JSON:API object, of None als niet gevonden.
+    Uses the new search endpoint + Inertia detail fetch.
+    Returns a dict compatible with old JSON:API format for backward compat:
+        {"id": PID, "attributes": {"hid": PID, "name": ..., "email": ...}}
     """
     try:
         api = get_trainin_client()
-        data = api.get("/clients", params={"filter[search]": email})
-        for c in data.get("data", []):
-            if c.get("attributes", {}).get("email", "").lower() == email.lower():
-                logger.info("Client gevonden: %s (ID: %s)", email, c["id"])
-                return c
+        result = api.get("/clients/search", params={"search": email})
+        candidates = result.get("clients", [])
+
+        for c in candidates:
+            pid = c.get("pid")
+            if not pid:
+                continue
+            try:
+                detail = api.get_inertia(f"/clients/{pid}")
+                client_data = detail.get("client", {})
+                if client_data.get("email", "").lower() == email.lower():
+                    logger.info("Client gevonden: %s (PID: %s)", email, pid)
+                    return {
+                        "id": pid,
+                        "attributes": {
+                            "hid": pid,
+                            "name": client_data.get("name", ""),
+                            "email": client_data.get("email", ""),
+                        },
+                    }
+            except Exception as e:
+                logger.debug("Client detail ophalen mislukt voor %s: %s", pid, e)
+                continue
     except Exception as e:
         logger.warning("Client zoeken mislukt: %s", e)
     return None
@@ -201,67 +278,48 @@ def find_client_by_email(email: str) -> Optional[dict]:
 def create_client_in_trainin(client_data: dict) -> Optional[dict]:
     """Maak een nieuwe client aan in Trainin via de staff API.
 
-    Endpoint: POST /clients/new/invite
-    Dit is het endpoint dat het Trainin staff dashboard zelf gebruikt.
+    Endpoint: POST /clients/new
+    Required: lastName, email. Optional: firstName, phone, etc.
 
     Args:
         client_data: {"first_name": ..., "last_name": ..., "email": ..., "phone": ...}
 
     Returns:
-        JSON:API client object met id en attributes, of None bij fout.
+        Dict compatible with old format: {"id": PID, "attributes": {"hid": PID, ...}}
     """
     try:
         api = get_trainin_client()
 
+        first_name = client_data.get("first_name", "")
+        last_name = client_data.get("last_name", "")
+        email = client_data.get("email", "")
+        phone = client_data.get("phone", "")
+
         payload = {
-            "client": {
-                "first_name": client_data.get("first_name", ""),
-                "last_name": client_data.get("last_name", ""),
-                "email": client_data.get("email", ""),
-                "phone": client_data.get("phone", ""),
-                "phone_ice": "",
-                "address": "",
-                "postal_code": "",
-                "city": "",
-                "has_company": False,
-                "company_name": "",
-                "company_contact_name": "",
-                "company_vat_no": "",
-                "company_address": "",
-                "company_postal_code": "",
-                "company_city": "",
-                "company_order_email": "",
-                "needs_registration": True,
-                "create_user": True,
-                "can_notify": True,
-                "location": None,
-                "child": {"first_name": "", "last_name": ""},
-            },
-            "has_product": False,
-            "product": {
-                "quantity": 1,
-                "has_payment": True,
-                "payment_option": "send",
-                "payment_request_method": "link",
-                "payment_method": None,
-                "add_registration_product": True,
-                "has_remarks": False,
-                "orders": [],
-            },
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "phone": phone,
         }
 
-        # api.post() handles auth retry on 419/401 automatically
-        data = api.post("/clients/new/invite", data=payload)
+        data = api.post("/clients/new", data=payload)
 
-        client = data.get("data", {})
-        client_id = client.get("id")
-        client_hid = client.get("attributes", {}).get("hid", "")
-        logger.info(
-            "Client aangemaakt in Trainin: %s %s (ID: %s, HID: %s)",
-            client_data.get("first_name"), client_data.get("last_name"),
-            client_id, client_hid,
-        )
-        return client
+        # After creation, search for the client to get their PID
+        created_client = find_client_by_email(email)
+        if created_client:
+            logger.info(
+                "Client aangemaakt in Trainin: %s %s (PID: %s)",
+                first_name, last_name, created_client.get("id"),
+            )
+            return created_client
+
+        # Fallback: return minimal dict if search fails
+        name = f"{first_name} {last_name}".strip()
+        logger.warning("Client aangemaakt maar niet gevonden bij zoeken: %s", email)
+        return {
+            "id": "unknown",
+            "attributes": {"hid": "", "name": name, "email": email},
+        }
 
     except Exception as e:
         logger.warning("Client aanmaken mislukt: %s", e)
@@ -276,92 +334,67 @@ def create_session_in_trainin(
 ) -> Optional[dict]:
     """Maak een sessie aan in Trainin via de staff API.
 
-    Endpoint: POST /sessions
-    Maakt een sessie in de agenda, koppelt de client (booking) en trainer.
+    Endpoint: POST /calendar/sessions
+    Uses PIDs for activity, location, instructor, and client.
 
     Args:
-        session_data: {"listing_id": ..., "date": ..., "start": ..., "end": ..., "instructor_id": ...}
-        client_id: Trainin client ID om direct als booking te koppelen.
+        session_data: {"listing_id": ..., "date": ..., "start": ..., "end": ...,
+                       "instructor_id": ..., "instructor": ..., "key": ...}
+        client_id: Trainin client PID om direct als booking te koppelen.
 
     Returns:
-        {"session_id": ..., "booking_id": ..., "status": "created"} of None bij fout.
+        {"session_id": None, "booking_id": None, "status": "created"} of None bij fout.
     """
     try:
         api = get_trainin_client()
 
-        # Bouw volledige datetime strings: "2026-04-10 14:30:00"
         date = session_data["date"]
         start_time = session_data["start"]
-        end_time = session_data.get("end", "")
+        start_dt = f"{date} {start_time}"
 
-        # Start datetime
-        start_dt = f"{date} {start_time}:00" if len(start_time) == 5 else f"{date} {start_time}"
+        # Map listing numeric ID → activity PID
+        listing_id = session_data["listing_id"]
+        activity_pid = LISTING_ID_TO_PID.get(listing_id)
+        if not activity_pid:
+            logger.error("Geen activity PID gevonden voor listing_id=%s", listing_id)
+            return None
 
-        # End datetime: als er een eindtijd is, gebruik die; anders +60 min
-        if end_time:
-            end_dt = f"{date} {end_time}:00" if len(end_time) == 5 else f"{date} {end_time}"
-        else:
-            # Fallback: 60 minuten na start
-            from datetime import timedelta
-            start_obj = datetime.strptime(start_dt, "%Y-%m-%d %H:%M:%S")
-            end_obj = start_obj + timedelta(minutes=60)
-            end_dt = end_obj.strftime("%Y-%m-%d %H:%M:%S")
-
-        # Use location from the slot key if available (format: "{location_id}_{instructor_id}")
-        location_id = DEFAULT_LOCATION_ID
+        # Map location
         key = session_data.get("key", "")
-        if key and "_" in key:
-            try:
-                location_id = int(key.split("_")[0])
-            except ValueError:
-                pass
+        location_pid = _get_location_pid(key)
 
         payload = {
-            "listing": session_data["listing_id"],
-            "location": location_id,
+            "activityPid": activity_pid,
             "start": start_dt,
-            "end": end_dt,
+            "locationPid": location_pid,
         }
 
-        # Koppel client als booking
+        # Map instructor by name (public API provides numeric ID + name)
+        instructor_name = session_data.get("instructor", "")
+        if instructor_name:
+            instructor_pid = _get_instructor_pid(instructor_name)
+            if instructor_pid:
+                payload["instructorPid"] = instructor_pid
+
+        # Koppel client
         if client_id:
-            payload["client"] = int(client_id)
-
-        # Koppel instructor
-        instructor_id = session_data.get("instructor_id")
-        if instructor_id:
-            payload["instructor"] = int(instructor_id)
+            payload["clientPids"] = [client_id]
 
         logger.info(
-            "Sessie aanmaken: listing=%s, %s %s-%s, client=%s, instructor=%s",
-            session_data["listing_id"], date, start_time, end_time,
-            client_id, instructor_id,
+            "Sessie aanmaken: activity=%s, %s %s, location=%s, client=%s, instructor=%s",
+            activity_pid, date, start_time, location_pid,
+            client_id, instructor_name,
         )
 
-        # api.post() handles auth retry on 419/401 automatically
-        data = api.post("/sessions", data=payload)
+        data = api.post("/calendar/sessions", data=payload)
 
-        session = data.get("data", {})
-        session_id = session.get("id")
-
-        # Zoek booking ID in included data
-        booking_id = None
-        for inc in data.get("included", []):
-            if inc.get("type") == "bookings":
-                booking_id = inc.get("id")
-                break
-
-        logger.info(
-            "Sessie aangemaakt: ID %s, booking ID %s, status %s",
-            session_id, booking_id,
-            session.get("attributes", {}).get("status", "?"),
-        )
+        logger.info("Sessie aangemaakt: response=%s", data)
 
         return {
-            "session_id": session_id,
-            "booking_id": booking_id,
+            "session_id": None,
+            "booking_id": None,
             "status": "created",
-            "trainin_status": session.get("attributes", {}).get("status"),
+            "trainin_status": "accepted",
         }
 
     except Exception as e:
@@ -604,7 +637,7 @@ def _set_cached(key: str, data):
 def fetch_sessions_for_date(date_str: str) -> list[dict]:
     """Fetch all sessions for a given date from the Trainin business API.
 
-    Paginate through the /sessions endpoint (max 100/page) and filter
+    Uses Inertia partial reload to get calendar sessions, then filters
     client-side to only the requested date.
 
     Returns list of parsed session dicts with:
@@ -619,68 +652,56 @@ def fetch_sessions_for_date(date_str: str) -> list[dict]:
 
     api = get_trainin_client()
     sessions = []
-    page = 1
-    max_pages = 5  # Safety limit
 
-    while page <= max_pages:
-        result = api.get("/sessions", params={
-            "filter[from]": date_str,
-            "filter[to]": date_str,
-            "per_page": 100,
-            "page": page,
-        })
+    try:
+        result = api.get_inertia(
+            "/calendar",
+            partial_data="sessions",
+            partial_component="calendar/CalendarPage",
+        )
 
-        data = result.get("data", [])
-        if not data:
-            break
+        all_sessions = result.get("sessions", [])
+        for s in all_sessions:
+            if s.get("type") != "session":
+                continue
 
-        found_target = False
-        past_target = False
-
-        for s in data:
-            attrs = s.get("attributes", {})
-            start = attrs.get("start", "")
+            start = s.get("start", "")
             session_date = start[:10] if len(start) >= 10 else ""
 
-            if session_date == date_str:
-                found_target = True
+            if session_date != date_str:
+                continue
 
-                # Get instructor ID from relationships
-                rels = s.get("relationships", {})
-                instr_data = rels.get("instructors", {}).get("data", [])
-                instructor_id = int(instr_data[0]["id"]) if instr_data else None
+            status_obj = s.get("status", {})
+            status_val = status_obj.get("value", "") if isinstance(status_obj, dict) else str(status_obj)
 
-                # Get listing ID from relationships
-                listing_id = rels.get("listing", {}).get("data", {}).get("id")
+            instructors = s.get("instructors", [])
+            instructor_names = [i.get("name", "") for i in instructors]
+            instructor_pid = instructors[0].get("pid") if instructors else None
 
-                # Get location ID from relationships
-                loc_data = rels.get("location", {}).get("data", {})
-                location_id = loc_data.get("id") if loc_data else None
+            location = s.get("location", {}) or {}
+            location_pid = location.get("pid")
 
-                sessions.append({
-                    "id": s.get("id"),
-                    "title": attrs.get("title", ""),
-                    "start": start,
-                    "end": attrs.get("end", ""),
-                    "time": start[11:16] if len(start) >= 16 else "",
-                    "status": attrs.get("status", ""),
-                    "instructor_id": instructor_id,
-                    "instructor_names": attrs.get("instructor_names", []),
-                    "location_id": location_id,
-                    "listing_id": listing_id,
-                })
+            # Parse time from ISO format (e.g., "2026-08-21T10:00:00+02:00")
+            time_str = ""
+            if len(start) >= 16:
+                time_str = start[11:16]
 
-            elif found_target and session_date > date_str:
-                # We've moved past the target date — stop
-                past_target = True
-                break
+            sessions.append({
+                "id": s.get("id", ""),
+                "title": s.get("title", ""),
+                "start": start,
+                "end": s.get("end", ""),
+                "time": time_str,
+                "status": status_val,
+                "instructor_id": instructor_pid,
+                "instructor_names": instructor_names,
+                "location_id": location_pid,
+                "listing_id": s.get("activityPid"),
+            })
+    except Exception as e:
+        logger.warning("Inertia calendar fetch mislukt: %s", e)
 
-        if past_target or len(data) < 100:
-            break
-
-        page += 1
-
-    logger.info("Fetched %d sessions for %s (%d pages)", len(sessions), date_str, page)
+    logger.info("Fetched %d sessions for %s from calendar", len(sessions), date_str)
     _set_cached(cache_key, sessions)
     return sessions
 
@@ -794,7 +815,7 @@ def detect_ns1_vz_slots(sessions: list[dict], date_str: str) -> list[dict]:
             "start_full": s.get("start", ""),
             "instructor": instructor_name,
             "instructor_id": instructor_id,
-            "key": f"{DEFAULT_LOCATION_ID}_{instructor_id}",
+            "key": f"{DEFAULT_LOCATION_PID}_{instructor_id}",
             "type": slot_type,  # internal tracking only, not shown to client
         })
 

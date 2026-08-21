@@ -125,6 +125,36 @@ class TraininClient:
         resp.raise_for_status()
         return resp.json() if resp.text else None
 
+    def get_inertia(self, path, params=None, partial_data=None, partial_component=None):
+        """GET request with Inertia headers. Returns Inertia props or full response dict."""
+        from config import INERTIA_VERSION
+        self._ensure_authenticated()
+        url = self._url(path)
+        headers = self._headers()
+        headers["X-Inertia"] = "true"
+        headers["X-Inertia-Version"] = INERTIA_VERSION
+        if partial_data:
+            headers["X-Inertia-Partial-Data"] = partial_data
+        if partial_component:
+            headers["X-Inertia-Partial-Component"] = partial_component
+
+        resp = self._http.get(url, headers=headers, params=params)
+
+        if resp.status_code in (401, 419):
+            self._re_authenticate()
+            headers = self._headers()
+            headers["X-Inertia"] = "true"
+            headers["X-Inertia-Version"] = INERTIA_VERSION
+            if partial_data:
+                headers["X-Inertia-Partial-Data"] = partial_data
+            if partial_component:
+                headers["X-Inertia-Partial-Component"] = partial_component
+            resp = self._http.get(url, headers=headers, params=params)
+
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("props", data)
+
     def delete(self, path):
         """DELETE request naar de Trainin API."""
         self._ensure_authenticated()
@@ -232,7 +262,7 @@ class TraininClient:
         jar = {k: v for k, v in client.cookies.items()}
         parts.update(jar)
         cookie_str = "; ".join(f"{k}={v}" for k, v in parts.items())
-        xsrf = unquote(jar.get("XSRF-TOKEN", ""))
+        xsrf = unquote(jar.get("TRN-XSRF-TOKEN", jar.get("XSRF-TOKEN", "")))
 
         if not xsrf:
             return False
@@ -243,7 +273,7 @@ class TraininClient:
             headers={
                 "Accept": "application/json",
                 "Cookie": cookie_str,
-                "X-XSRF-TOKEN": xsrf,
+                "X-TRN-XSRF-TOKEN": xsrf,
                 "X-Auth-Guard": "staff",
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": f"{self.base_url}/finances/outstanding",
@@ -344,7 +374,7 @@ class TraininClient:
 
             # Bouw finale cookie string
             self._cookie = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
-            self._xsrf = unquote(login_cookies.get("XSRF-TOKEN", ""))
+            self._xsrf = unquote(login_cookies.get("TRN-XSRF-TOKEN", login_cookies.get("XSRF-TOKEN", "")))
 
             if not self._xsrf:
                 print("[TraininClient] Geen XSRF token na login")
@@ -358,7 +388,7 @@ class TraininClient:
                 headers={
                     "Accept": "application/json",
                     "Cookie": self._cookie,
-                    "X-XSRF-TOKEN": self._xsrf,
+                    "X-TRN-XSRF-TOKEN": self._xsrf,
                     "X-Auth-Guard": "staff",
                     "X-Requested-With": "XMLHttpRequest",
                     "Referer": f"{self.base_url}/finances/outstanding",
@@ -428,7 +458,7 @@ class TraininClient:
 
         cookie_dict = {c["name"]: c["value"] for c in cookies}
         self._cookie = "; ".join(f"{k}={v}" for k, v in cookie_dict.items())
-        self._xsrf = unquote(cookie_dict.get("XSRF-TOKEN", ""))
+        self._xsrf = unquote(cookie_dict.get("TRN-XSRF-TOKEN", cookie_dict.get("XSRF-TOKEN", "")))
 
         if not self._xsrf:
             raise RuntimeError("Login: geen XSRF token in cookies.")
@@ -452,7 +482,7 @@ class TraininClient:
         return {
             "Accept": "application/json",
             "Cookie": self._cookie,
-            "X-XSRF-TOKEN": self._xsrf,
+            "X-TRN-XSRF-TOKEN": self._xsrf,
             "X-Auth-Guard": "staff",
             "X-Requested-With": "XMLHttpRequest",
             "Referer": f"{self.base_url}/finances/outstanding",

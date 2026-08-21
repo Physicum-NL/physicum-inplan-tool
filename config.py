@@ -23,7 +23,20 @@ VIAVIA_LISTING = {"hid": "L2YKN", "id": 7117, "name": "Via via cadeau personal t
 KENNISMAKEN_LISTING = {"hid": "LNV3K9", "id": 51876, "name": "Telefonisch kennismaken"}
 
 # Locatie
-DEFAULT_LOCATION_ID = 908  # Physicum, Emmaplein 2
+DEFAULT_LOCATION_ID = 908  # Physicum, Emmaplein 2 (legacy numeric)
+DEFAULT_LOCATION_PID = "NDLBZ"  # Physicum, Emmaplein 2 (new PID)
+
+# Listing numeric ID → activity PID mapping (new platform uses PIDs)
+LISTING_ID_TO_PID = {
+    49005: "L93X95",   # 1e Introductie personal training
+    49003: "LBVJN9",   # 2e Introductie personal training
+    49004: "LNVLKO",   # 3e Introductie personal training
+    7117:  "L2YKN",    # Via via cadeau personal training
+    51876: "LNV3K9",   # Telefonisch kennismaken
+}
+
+# Inertia version for new Trainin platform (may change on Trainin deploys)
+INERTIA_VERSION = "e739c1b93267de9a613d71e6ebf1f008"
 
 # Studio capacity — max simultaneous PT sessions at Emmaplein
 STUDIO_CAPACITY = 6

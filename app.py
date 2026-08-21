@@ -649,9 +649,9 @@ def fix_tool():
     # Stap 2: Maak nieuwe verbinding met Trainin API
     try:
         api = get_trainin_client()
-        result = api.get("/clients", params={"per_page": 1})
-        total = result.get("meta", {}).get("total", 0)
-        steps.append({"name": "Re-authenticatie", "ok": True, "detail": f"Ingelogd, {total} clients zichtbaar"})
+        result = api.get("/clients/search", params={"search": "test"})
+        count = len(result.get("clients", []))
+        steps.append({"name": "Re-authenticatie", "ok": True, "detail": f"Ingelogd, {count} clients gevonden"})
     except Exception as e:
         steps.append({"name": "Re-authenticatie", "ok": False, "detail": str(e)[:100]})
 
