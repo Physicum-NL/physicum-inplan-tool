@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "5001:5001"
+    environment:
+      - TZ=Europe/Amsterdam
     env_file:
       - .env
     volumes:
