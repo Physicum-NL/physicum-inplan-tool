@@ -656,6 +656,7 @@ def fetch_sessions_for_date(date_str: str) -> list[dict]:
     try:
         result = api.get_inertia(
             "/calendar",
+            params={"startDate": date_str, "endDate": date_str},
             partial_data="sessions",
             partial_component="calendar/CalendarPage",
         )
