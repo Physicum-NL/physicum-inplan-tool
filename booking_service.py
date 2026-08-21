@@ -7,7 +7,7 @@ Flow:
 4. Log de aanvraag
 5. Stuur Slack melding met deep links naar Trainin
 
-Sessies worden aangemaakt via POST /business/sessions. Dit blokkeert
+Sessies worden aangemaakt via POST /sessions. Dit blokkeert
 het tijdslot in de agenda en koppelt de client + trainer direct.
 """
 
@@ -201,7 +201,7 @@ def find_client_by_email(email: str) -> Optional[dict]:
 def create_client_in_trainin(client_data: dict) -> Optional[dict]:
     """Maak een nieuwe client aan in Trainin via de staff API.
 
-    Endpoint: POST /business/clients/new/invite
+    Endpoint: POST /clients/new/invite
     Dit is het endpoint dat het Trainin staff dashboard zelf gebruikt.
 
     Args:
@@ -276,7 +276,7 @@ def create_session_in_trainin(
 ) -> Optional[dict]:
     """Maak een sessie aan in Trainin via de staff API.
 
-    Endpoint: POST /business/sessions
+    Endpoint: POST /sessions
     Maakt een sessie in de agenda, koppelt de client (booking) en trainer.
 
     Args:
@@ -439,11 +439,11 @@ def send_slack_notification(
             status_emoji = ":bust_in_silhouette:"
             status_text = f"Bestaande klant (ID: {client_id})"
 
-        client_link = f"{TRAININ_BASE}/business/clients/{client_hid}"
+        client_link = f"{TRAININ_BASE}/clients/{client_hid}"
     else:
         status_emoji = ":warning:"
         status_text = "Niet aangemaakt (handmatig toevoegen)"
-        client_link = f"{TRAININ_BASE}/business/clients/new"
+        client_link = f"{TRAININ_BASE}/clients/new"
         client_hid = ""
 
     # Bepaal booking status
@@ -530,14 +530,14 @@ def send_slack_notification(
         actions.append({
             "type": "button",
             "text": {"type": "plain_text", "text": ":heavy_plus_sign: Maak klant aan", "emoji": True},
-            "url": f"{TRAININ_BASE}/business/clients/new",
+            "url": f"{TRAININ_BASE}/clients/new",
             "style": "primary",
         })
 
     actions.append({
         "type": "button",
         "text": {"type": "plain_text", "text": ":calendar: Open agenda", "emoji": True},
-        "url": f"{TRAININ_BASE}/business/calendar",
+        "url": f"{TRAININ_BASE}/calendar",
     })
 
     blocks.append({
@@ -1113,11 +1113,11 @@ def send_viavia_slack_notification(
             status_emoji = ":bust_in_silhouette:"
             status_text = f"Bestaande klant (ID: {client_id})"
 
-        client_link = f"{TRAININ_BASE}/business/clients/{client_hid}"
+        client_link = f"{TRAININ_BASE}/clients/{client_hid}"
     else:
         status_emoji = ":warning:"
         status_text = "Niet aangemaakt (handmatig toevoegen)"
-        client_link = f"{TRAININ_BASE}/business/clients/new"
+        client_link = f"{TRAININ_BASE}/clients/new"
         client_hid = ""
 
     # Bepaal booking status
@@ -1204,14 +1204,14 @@ def send_viavia_slack_notification(
         actions.append({
             "type": "button",
             "text": {"type": "plain_text", "text": ":heavy_plus_sign: Maak klant aan", "emoji": True},
-            "url": f"{TRAININ_BASE}/business/clients/new",
+            "url": f"{TRAININ_BASE}/clients/new",
             "style": "primary",
         })
 
     actions.append({
         "type": "button",
         "text": {"type": "plain_text", "text": ":calendar: Open agenda", "emoji": True},
-        "url": f"{TRAININ_BASE}/business/calendar",
+        "url": f"{TRAININ_BASE}/calendar",
     })
 
     blocks.append({
@@ -1367,11 +1367,11 @@ def send_kennismaken_slack_notification(
             status_emoji = ":bust_in_silhouette:"
             status_text = f"Bestaande klant (ID: {client_id})"
 
-        client_link = f"{TRAININ_BASE}/business/clients/{client_hid}"
+        client_link = f"{TRAININ_BASE}/clients/{client_hid}"
     else:
         status_emoji = ":warning:"
         status_text = "Niet aangemaakt (handmatig toevoegen)"
-        client_link = f"{TRAININ_BASE}/business/clients/new"
+        client_link = f"{TRAININ_BASE}/clients/new"
 
     # Sessie details
     session_created = session_result is not None and session_result.get("status") == "created"
@@ -1434,14 +1434,14 @@ def send_kennismaken_slack_notification(
         actions.append({
             "type": "button",
             "text": {"type": "plain_text", "text": ":heavy_plus_sign: Maak klant aan", "emoji": True},
-            "url": f"{TRAININ_BASE}/business/clients/new",
+            "url": f"{TRAININ_BASE}/clients/new",
             "style": "primary",
         })
 
     actions.append({
         "type": "button",
         "text": {"type": "plain_text", "text": ":calendar: Open agenda", "emoji": True},
-        "url": f"{TRAININ_BASE}/business/calendar",
+        "url": f"{TRAININ_BASE}/calendar",
     })
 
     blocks.append({"type": "actions", "elements": actions})

@@ -21,7 +21,6 @@ from booking_service import (
 )
 from config import (
     TRAININ_API_PUBLIC,
-    TRAININ_API_BUSINESS,
     LISTINGS,
     VIAVIA_LISTING,
     KENNISMAKEN_LISTING,

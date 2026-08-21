@@ -36,7 +36,7 @@ import httpx
 DEFAULT_LOGIN_URL = "https://trainin.app/login"
 DEFAULT_SUBDOMAIN = "physicum-company"
 DEFAULT_BASE_URL = f"https://{DEFAULT_SUBDOMAIN}.trainin.app"
-DEFAULT_API_BASE = f"{DEFAULT_BASE_URL}/api/v2/AR7DJ/business"
+DEFAULT_API_BASE = DEFAULT_BASE_URL
 KEYCHAIN_SERVICE = "trainin-reminders"
 IS_MACOS = platform.system() == "Darwin"
 COOKIE_FILE = Path(__file__).parent / ".cookie_cache.json"
@@ -50,7 +50,7 @@ class TraininClient:
 
     Args:
         subdomain: Je Trainin subdomain (bijv. "physicum")
-        api_path: API pad na het subdomein (bijv. "/api/v2/AR7DJ/business")
+        api_path: API pad na het subdomein (leeg voor nieuw Trainin platform)
         login_url: URL van de login pagina
         keychain_service: macOS Keychain service naam
     """
@@ -58,7 +58,7 @@ class TraininClient:
     def __init__(
         self,
         subdomain=DEFAULT_SUBDOMAIN,
-        api_path="/api/v2/AR7DJ/business",
+        api_path="",
         login_url=DEFAULT_LOGIN_URL,
         keychain_service=KEYCHAIN_SERVICE,
     ):
@@ -221,7 +221,7 @@ class TraininClient:
         # Bezoek pagina voor verse session tokens
         client = httpx.Client(follow_redirects=True, timeout=30)
         client.get(
-            f"{self.base_url}/business/finances/outstanding",
+            f"{self.base_url}/finances/outstanding",
             headers={
                 "Cookie": cookie,
                 "Accept": "text/html",
@@ -246,7 +246,7 @@ class TraininClient:
                 "X-XSRF-TOKEN": xsrf,
                 "X-Auth-Guard": "staff",
                 "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{self.base_url}/business/finances/outstanding",
+                "Referer": f"{self.base_url}/finances/outstanding",
             },
             params={"page": 1},
         )
@@ -266,7 +266,7 @@ class TraininClient:
         Gebruikt het Trainin SPA login endpoint:
         1. GET /login → haal session cookies (XSRF-TOKEN + trainin_session)
         2. POST /api/v2/login → authenticeer met username/password
-        3. GET /business/... → haal subdomain cookies voor API calls
+        3. GET /finances/... → haal subdomain cookies voor API calls
         """
         try:
             client = httpx.Client(follow_redirects=False, timeout=30)
@@ -318,7 +318,7 @@ class TraininClient:
             # Stap 3: Bezoek business pagina voor subdomain cookies
             cookie_str = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
             resp2 = client.get(
-                f"{self.base_url}/business/finances/outstanding",
+                f"{self.base_url}/finances/outstanding",
                 headers={
                     "Accept": "text/html",
                     "Cookie": cookie_str,
@@ -361,7 +361,7 @@ class TraininClient:
                     "X-XSRF-TOKEN": self._xsrf,
                     "X-Auth-Guard": "staff",
                     "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{self.base_url}/business/finances/outstanding",
+                    "Referer": f"{self.base_url}/finances/outstanding",
                 },
                 params={"page": 1},
             )
@@ -455,7 +455,7 @@ class TraininClient:
             "X-XSRF-TOKEN": self._xsrf,
             "X-Auth-Guard": "staff",
             "X-Requested-With": "XMLHttpRequest",
-            "Referer": f"{self.base_url}/business/finances/outstanding",
+            "Referer": f"{self.base_url}/finances/outstanding",
         }
 
     def _get_from_keychain(self, key):

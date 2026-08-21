@@ -3,9 +3,11 @@
 import os
 
 # Trainin API
+# Business domain (company dashboard, auth API, Slack links)
 TRAININ_BASE = "https://physicum-company.trainin.app"
-TRAININ_API_PUBLIC = f"{TRAININ_BASE}/api/v2/AR7DJ/client"
-TRAININ_API_BUSINESS = f"{TRAININ_BASE}/api/v2/AR7DJ/business"
+# Public client API still lives on the old domain
+TRAININ_PUBLIC_BASE = "https://physicum.trainin.app"
+TRAININ_API_PUBLIC = f"{TRAININ_PUBLIC_BASE}/api/v2/AR7DJ/client"
 
 # De 3 introductie-listings in Trainin
 LISTINGS = [
