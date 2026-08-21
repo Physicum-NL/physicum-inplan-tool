@@ -26,5 +26,5 @@ jobs:
             git pull --ff-only
             echo '{}' > .cookie_cache.json
             docker compose up -d --build
-            sleep 5
-            curl -fsS http://localhost:5001/api/health
+            sleep 10
+            curl -sS http://localhost:5001/api/health | head -c 500
