@@ -234,6 +234,11 @@ def _get_location_pid(key: str) -> str:
     return DEFAULT_LOCATION_PID
 
 
+def _is_valid_pid(pid) -> bool:
+    """Check if a value looks like a real Trainin PID (e.g. C8PLKQ, LBVJN9)."""
+    return bool(pid and isinstance(pid, str) and len(pid) >= 4 and pid[0].isalpha())
+
+
 # ─── Client zoeken ────────────────────────────────────────
 
 def find_client_by_email(email: str) -> Optional[dict]:
@@ -247,16 +252,37 @@ def find_client_by_email(email: str) -> Optional[dict]:
         api = get_trainin_client()
         result = api.get("/clients/search", params={"search": email})
         candidates = result.get("clients", [])
+        logger.info("Client search for %s returned %d candidates", email, len(candidates))
 
+        # First pass: check if search results already contain email
         for c in candidates:
             pid = c.get("pid")
             if not pid:
+                continue
+            c_email = c.get("email", "")
+            if c_email and c_email.lower() == email.lower():
+                logger.info("Client gevonden (search match): %s (PID: %s)", email, pid)
+                return {
+                    "id": pid,
+                    "attributes": {
+                        "hid": pid,
+                        "name": c.get("name", ""),
+                        "email": c_email,
+                    },
+                }
+
+        # Second pass: fetch detail pages for candidates without email
+        for c in candidates:
+            pid = c.get("pid")
+            if not pid:
+                continue
+            if c.get("email"):
                 continue
             try:
                 detail = api.get_inertia(f"/clients/{pid}")
                 client_data = detail.get("client", {})
                 if client_data.get("email", "").lower() == email.lower():
-                    logger.info("Client gevonden: %s (PID: %s)", email, pid)
+                    logger.info("Client gevonden (detail match): %s (PID: %s)", email, pid)
                     return {
                         "id": pid,
                         "attributes": {
@@ -303,22 +329,45 @@ def create_client_in_trainin(client_data: dict) -> Optional[dict]:
         }
 
         data = api.post("/clients/new", data=payload)
+        logger.info("Client create response: %s", data)
 
-        # After creation, search for the client to get their PID
+        # Try to extract PID from the POST response (Inertia redirect URL)
+        redirect_pid = None
+        if isinstance(data, dict):
+            url_field = data.get("url", "")
+            if url_field and "/clients/" in url_field:
+                redirect_pid = url_field.rstrip("/").rsplit("/", 1)[-1]
+                if redirect_pid and len(redirect_pid) >= 4:
+                    logger.info("Client PID from redirect: %s", redirect_pid)
+
+        # Search for the client to get their PID
         created_client = find_client_by_email(email)
-        if created_client:
+        if created_client and _is_valid_pid(created_client.get("id")):
             logger.info(
                 "Client aangemaakt in Trainin: %s %s (PID: %s)",
                 first_name, last_name, created_client.get("id"),
             )
             return created_client
 
-        # Fallback: return minimal dict if search fails
+        # Use PID from redirect if search failed
+        if redirect_pid:
+            name = f"{first_name} {last_name}".strip()
+            logger.info("Using PID from redirect URL: %s", redirect_pid)
+            return {
+                "id": redirect_pid,
+                "attributes": {"hid": redirect_pid, "name": name, "email": email},
+            }
+
+        # Client was created but we can't determine PID
         name = f"{first_name} {last_name}".strip()
-        logger.warning("Client aangemaakt maar niet gevonden bij zoeken: %s", email)
+        logger.error(
+            "Client aangemaakt maar PID niet achterhaald voor %s. "
+            "Sessies worden ZONDER client aangemaakt.", email,
+        )
         return {
-            "id": "unknown",
+            "id": None,
             "attributes": {"hid": "", "name": name, "email": email},
+            "_created_but_pid_unknown": True,
         }
 
     except Exception as e:
@@ -376,24 +425,35 @@ def create_session_in_trainin(
             if instructor_pid:
                 payload["instructorPid"] = instructor_pid
 
-        # Koppel client
-        if client_id:
+        # Only attach client if we have a valid PID
+        client_attached = False
+        if client_id and _is_valid_pid(client_id):
             payload["clientPids"] = [client_id]
+            client_attached = True
+        elif client_id:
+            logger.warning("Skipping invalid client PID: %r", client_id)
 
         logger.info(
-            "Sessie aanmaken: activity=%s, %s %s, location=%s, client=%s, instructor=%s",
+            "Sessie aanmaken: activity=%s, %s %s, location=%s, client=%s (attached=%s), instructor=%s",
             activity_pid, date, start_time, location_pid,
-            client_id, instructor_name,
+            client_id, client_attached, instructor_name,
         )
 
         data = api.post("/calendar/sessions", data=payload)
 
         logger.info("Sessie aangemaakt: response=%s", data)
 
+        # Check response for success
+        if isinstance(data, dict) and data.get("success") is False:
+            errors = data.get("errors", data.get("message", "unknown error"))
+            logger.error("Trainin reported failure: %s", errors)
+            return None
+
         return {
             "session_id": None,
             "booking_id": None,
             "status": "created",
+            "client_attached": client_attached,
             "trainin_status": "accepted",
         }
 
@@ -482,16 +542,22 @@ def send_slack_notification(
     # Bepaal booking status
     sessions_created = 0
     sessions_failed = 0
+    sessions_no_client = 0
     if session_results:
         for r in session_results:
             if r and r.get("status") == "created":
                 sessions_created += 1
+                if not r.get("client_attached", True):
+                    sessions_no_client += 1
             else:
                 sessions_failed += 1
 
-    if sessions_created == len(sessions):
+    if sessions_created == len(sessions) and sessions_no_client == 0:
         booking_emoji = ":white_check_mark:"
         booking_status = f"Alle {sessions_created} sessies ingepland in agenda"
+    elif sessions_created == len(sessions) and sessions_no_client > 0:
+        booking_emoji = ":warning:"
+        booking_status = f"Alle {sessions_created} sessies ingepland, maar klant NIET gekoppeld (handmatig koppelen)"
     elif sessions_created > 0:
         booking_emoji = ":warning:"
         booking_status = f"{sessions_created}/{len(sessions)} sessies ingepland ({sessions_failed} mislukt)"
@@ -512,7 +578,10 @@ def send_slack_notification(
         # Status per sessie
         result = session_results[i] if session_results and i < len(session_results) else None
         if result and result.get("status") == "created":
-            line_emoji = ":white_check_mark:"
+            if result.get("client_attached", True):
+                line_emoji = ":white_check_mark:"
+            else:
+                line_emoji = ":warning:"
         else:
             line_emoji = ":x:"
 
@@ -1145,16 +1214,22 @@ def send_viavia_slack_notification(
     # Bepaal booking status
     sessions_created = 0
     sessions_failed = 0
+    sessions_no_client = 0
     if session_results:
         for r in session_results:
             if r and r.get("status") == "created":
                 sessions_created += 1
+                if not r.get("client_attached", True):
+                    sessions_no_client += 1
             else:
                 sessions_failed += 1
 
-    if sessions_created == len(sessions):
+    if sessions_created == len(sessions) and sessions_no_client == 0:
         booking_emoji = ":white_check_mark:"
         booking_status = f"Alle {sessions_created} sessies ingepland in agenda"
+    elif sessions_created == len(sessions) and sessions_no_client > 0:
+        booking_emoji = ":warning:"
+        booking_status = f"Alle {sessions_created} sessies ingepland, maar klant NIET gekoppeld (handmatig koppelen)"
     elif sessions_created > 0:
         booking_emoji = ":warning:"
         booking_status = f"{sessions_created}/{len(sessions)} sessies ingepland ({sessions_failed} mislukt)"
@@ -1175,7 +1250,10 @@ def send_viavia_slack_notification(
         # Status per sessie
         result = session_results[i] if session_results and i < len(session_results) else None
         if result and result.get("status") == "created":
-            line_emoji = ":white_check_mark:"
+            if result.get("client_attached", True):
+                line_emoji = ":white_check_mark:"
+            else:
+                line_emoji = ":warning:"
         else:
             line_emoji = ":x:"
 

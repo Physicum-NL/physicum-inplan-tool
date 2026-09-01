@@ -19,9 +19,12 @@ Setup (eenmalig):
     python3 setup.py
 """
 
+import html as html_mod
 import json
+import logging
 import os
 import platform
+import re
 import subprocess
 import tempfile
 import time
@@ -29,6 +32,8 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Standaard configuratie ───
@@ -122,38 +127,94 @@ class TraininClient:
             headers["Content-Type"] = "application/json"
             resp = self._http.post(url, headers=headers, json=data)
 
+        if resp.status_code >= 400:
+            body = resp.text[:500] if resp.text else "(empty)"
+            logger.warning("POST %s returned %d: %s", path, resp.status_code, body)
         resp.raise_for_status()
         return resp.json() if resp.text else None
 
     def get_inertia(self, path, params=None, partial_data=None, partial_component=None):
-        """GET request with Inertia headers. Returns Inertia props or full response dict."""
-        from config import INERTIA_VERSION
+        """GET request with Inertia headers. Returns Inertia props or full response dict.
+
+        Handles 409 Conflict (Inertia version mismatch) by doing a full page
+        load, extracting the new version, and parsing props from HTML.
+        """
+        import config
         self._ensure_authenticated()
         url = self._url(path)
-        headers = self._headers()
-        headers["X-Inertia"] = "true"
-        headers["X-Inertia-Version"] = INERTIA_VERSION
-        if partial_data:
-            headers["X-Inertia-Partial-Data"] = partial_data
-        if partial_component:
-            headers["X-Inertia-Partial-Component"] = partial_component
 
-        resp = self._http.get(url, headers=headers, params=params)
+        def _build_headers():
+            h = self._headers()
+            h["X-Inertia"] = "true"
+            h["X-Inertia-Version"] = config.INERTIA_VERSION
+            if partial_data:
+                h["X-Inertia-Partial-Data"] = partial_data
+            if partial_component:
+                h["X-Inertia-Partial-Component"] = partial_component
+            return h
+
+        resp = self._http.get(url, headers=_build_headers(), params=params)
+
+        if resp.status_code == 409:
+            page_data = self._handle_inertia_conflict(url, params)
+            if page_data is not None:
+                return page_data
 
         if resp.status_code in (401, 419):
             self._re_authenticate()
-            headers = self._headers()
-            headers["X-Inertia"] = "true"
-            headers["X-Inertia-Version"] = INERTIA_VERSION
-            if partial_data:
-                headers["X-Inertia-Partial-Data"] = partial_data
-            if partial_component:
-                headers["X-Inertia-Partial-Component"] = partial_component
-            resp = self._http.get(url, headers=headers, params=params)
+            resp = self._http.get(url, headers=_build_headers(), params=params)
+            if resp.status_code == 409:
+                page_data = self._handle_inertia_conflict(url, params)
+                if page_data is not None:
+                    return page_data
 
         resp.raise_for_status()
         data = resp.json()
         return data.get("props", data)
+
+    def _handle_inertia_conflict(self, url, params=None):
+        """Handle Inertia 409 Conflict by doing a full page load.
+
+        Extracts Inertia page data from the HTML data-page attribute
+        and updates the runtime Inertia version for future requests.
+        """
+        import config
+        full_headers = {
+            "Accept": "text/html",
+            "Cookie": self._cookie,
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        }
+        resp = self._http.get(url, headers=full_headers, params=params)
+
+        if resp.status_code != 200:
+            logger.warning("Inertia 409 full-page fallback got %d for %s", resp.status_code, url)
+            return None
+
+        return self._extract_inertia_page_data(resp.text)
+
+    def _extract_inertia_page_data(self, html_text):
+        """Parse Inertia page data from HTML and update the runtime version."""
+        import config
+        match = re.search(r'data-page="([^"]+)"', html_text)
+        if not match:
+            match = re.search(r"data-page='([^']+)'", html_text)
+        if not match:
+            logger.warning("No Inertia data-page attribute found in HTML")
+            return None
+
+        try:
+            page_json = html_mod.unescape(match.group(1))
+            page_data = json.loads(page_json)
+
+            new_version = page_data.get("version")
+            if new_version and new_version != config.INERTIA_VERSION:
+                logger.info("Inertia version updated: %s -> %s", config.INERTIA_VERSION, new_version)
+                config.INERTIA_VERSION = new_version
+
+            return page_data.get("props", page_data)
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning("Failed to parse Inertia page data: %s", e)
+            return None
 
     def delete(self, path):
         """DELETE request naar de Trainin API."""
@@ -285,6 +346,7 @@ class TraininClient:
             self._cookie = cookie_str
             self._xsrf = xsrf
             self._http = httpx.Client(follow_redirects=True, timeout=30)
+            self._refresh_inertia_version()
             client.close()
             return True
         client.close()
@@ -401,6 +463,7 @@ class TraininClient:
                 self._save_to_keychain("cookie", self._cookie)
                 self._save_to_keychain("xsrf", self._xsrf)
                 self._http = httpx.Client(follow_redirects=True, timeout=30)
+                self._refresh_inertia_version()
                 client.close()
                 return True
             else:
@@ -466,6 +529,22 @@ class TraininClient:
         # Bewaar voor volgende keer
         self._save_to_keychain("cookie", self._cookie)
         self._http = httpx.Client(follow_redirects=True, timeout=30)
+
+    def _refresh_inertia_version(self):
+        """Fetch a page and extract the current Inertia version."""
+        try:
+            resp = self._http.get(
+                f"{self.base_url}/calendar",
+                headers={
+                    "Accept": "text/html",
+                    "Cookie": self._cookie,
+                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                },
+            )
+            if resp.status_code == 200:
+                self._extract_inertia_page_data(resp.text)
+        except Exception as e:
+            logger.debug("Inertia version refresh failed: %s", e)
 
     # ─── Helpers ───
 
