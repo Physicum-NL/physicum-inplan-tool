@@ -391,14 +391,48 @@ def create_client_in_trainin(client_data: dict) -> Optional[dict]:
 
 # ─── Sessie aanmaken in Trainin ───────────────────────────
 
+def _find_session_pid(date: str, start_time: str, activity_pid: str) -> Optional[str]:
+    """Find a session PID in the calendar by date, time, and activity."""
+    with _ns1vz_cache_lock:
+        _ns1vz_cache.pop(f"sessions_{date}", None)
+
+    sessions = fetch_sessions_for_date(date)
+    for s in sessions:
+        if s.get("time") == start_time and s.get("listing_id") == activity_pid:
+            return s.get("id")
+    return None
+
+
+def _book_client_into_session(session_pid: str, client_pid: str) -> bool:
+    """Book a client into an existing session via POST /calendar/sessions/{pid}/bookings."""
+    try:
+        api = get_trainin_client()
+        data = api.post(
+            f"/calendar/sessions/{session_pid}/bookings",
+            data={"clientPid": client_pid},
+        )
+        if isinstance(data, dict) and data.get("success") is not False:
+            logger.info("Client %s geboekt in sessie %s", client_pid, session_pid)
+            return True
+        logger.warning("Client booking mislukt: %s", data)
+        return False
+    except Exception as e:
+        logger.warning("Client booking POST mislukt: %s", e)
+        return False
+
+
 def create_session_in_trainin(
     session_data: dict,
     client_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Maak een sessie aan in Trainin via de staff API.
 
-    Endpoint: POST /calendar/sessions
-    Uses PIDs for activity, location, instructor, and client.
+    Two-step process:
+    1. POST /calendar/sessions — creates the calendar slot
+    2. POST /calendar/sessions/{pid}/bookings — books the client
+
+    Step 2 requires the session PID, which is found by searching
+    the calendar after creation (the POST response doesn't include it).
 
     Args:
         session_data: {"listing_id": ..., "date": ..., "start": ..., "end": ...,
@@ -406,7 +440,7 @@ def create_session_in_trainin(
         client_id: Trainin client PID om direct als booking te koppelen.
 
     Returns:
-        {"session_id": None, "booking_id": None, "status": "created"} of None bij fout.
+        {"session_id": ..., "booking_id": None, "status": "created"} of None bij fout.
     """
     try:
         api = get_trainin_client()
@@ -434,23 +468,15 @@ def create_session_in_trainin(
 
         # Map instructor by name (public API provides numeric ID + name)
         instructor_name = session_data.get("instructor", "")
+        instructor_pid = None
         if instructor_name:
             instructor_pid = _get_instructor_pid(instructor_name)
             if instructor_pid:
                 payload["instructorPid"] = instructor_pid
 
-        # Only attach client if we have a valid PID
-        client_attached = False
-        if client_id and _is_valid_pid(client_id):
-            payload["clientPids"] = [client_id]
-            client_attached = True
-        elif client_id:
-            logger.warning("Skipping invalid client PID: %r", client_id)
-
         logger.info(
-            "Sessie aanmaken: activity=%s, %s %s, location=%s, client=%s (attached=%s), instructor=%s",
-            activity_pid, date, start_time, location_pid,
-            client_id, client_attached, instructor_name,
+            "Sessie aanmaken: activity=%s, %s %s, location=%s, client=%s, instructor=%s",
+            activity_pid, date, start_time, location_pid, client_id, instructor_name,
         )
 
         data = api.post("/calendar/sessions", data=payload)
@@ -463,8 +489,29 @@ def create_session_in_trainin(
             logger.error("Trainin reported failure: %s", errors)
             return None
 
+        # Step 2: Book the client into the session
+        client_attached = False
+        session_pid = None
+
+        if client_id and _is_valid_pid(client_id):
+            session_pid = _find_session_pid(date, start_time, activity_pid)
+            if session_pid:
+                client_attached = _book_client_into_session(session_pid, client_id)
+                if not client_attached:
+                    logger.warning(
+                        "Sessie aangemaakt maar client %s NIET geboekt in sessie %s",
+                        client_id, session_pid,
+                    )
+            else:
+                logger.warning(
+                    "Sessie aangemaakt maar PID niet gevonden in agenda — "
+                    "client %s NIET geboekt", client_id,
+                )
+        elif client_id:
+            logger.warning("Skipping invalid client PID: %r", client_id)
+
         return {
-            "session_id": None,
+            "session_id": session_pid,
             "booking_id": None,
             "status": "created",
             "client_attached": client_attached,
