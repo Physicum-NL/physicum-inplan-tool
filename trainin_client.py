@@ -355,51 +355,56 @@ class TraininClient:
     def _login_with_httpx(self, email, password):
         """Login via directe HTTP requests (geen browser nodig — werkt op VPS).
 
-        Gebruikt het Trainin SPA login endpoint:
-        1. GET /login → haal session cookies (XSRF-TOKEN + trainin_session)
-        2. POST /api/v2/login → authenticeer met username/password
-        3. GET /finances/... → haal subdomain cookies voor API calls
+        Gebruikt het company-domain login endpoint:
+        1. GET /csrf-cookie → haal TRN-XSRF-TOKEN + trn_session
+        2. POST / (JSON) → authenticeer met email/password op company domain
+        3. Verifieer met een API call
         """
         try:
             client = httpx.Client(follow_redirects=False, timeout=30)
 
-            # Stap 1: GET login pagina voor session cookies
-            resp = client.get(self.login_url, headers={
-                "Accept": "text/html",
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-            })
+            # Stap 1: Haal CSRF cookie van company domain
+            resp = client.get(
+                f"{self.base_url}/csrf-cookie",
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+                    "Referer": self.base_url,
+                },
+            )
 
             login_cookies = {k: v for k, v in client.cookies.items()}
-            cookie_str = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
-            xsrf = unquote(login_cookies.get("XSRF-TOKEN", ""))
+            xsrf = unquote(login_cookies.get("TRN-XSRF-TOKEN", ""))
 
             if not xsrf:
-                print("[TraininClient] Geen XSRF token van login pagina")
+                print("[TraininClient] Geen TRN-XSRF-TOKEN van csrf-cookie")
                 client.close()
                 return False
 
-            # Stap 2: POST /api/v2/login (SPA endpoint)
+            # Stap 2: POST login op company domain root
+            cookie_str = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
             resp = client.post(
-                "https://trainin.app/api/v2/login",
+                f"{self.base_url}/",
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "Cookie": cookie_str,
-                    "Origin": "https://trainin.app",
-                    "Referer": self.login_url,
-                    "X-XSRF-TOKEN": xsrf,
+                    "Origin": self.base_url,
+                    "Referer": f"{self.base_url}/",
+                    "X-TRN-XSRF-TOKEN": xsrf,
                     "X-Requested-With": "XMLHttpRequest",
                     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
                 },
                 json={
-                    "username": email,
+                    "email": email,
                     "password": password,
-                    "device_name": "InplanTool",
+                    "remember": True,
                 },
             )
 
             if resp.status_code != 200:
-                print(f"[TraininClient] Login mislukt: status {resp.status_code}")
+                body = resp.text[:300] if resp.text else "(empty)"
+                print(f"[TraininClient] Login mislukt: status {resp.status_code} — {body}")
                 client.close()
                 return False
 
@@ -407,36 +412,9 @@ class TraininClient:
             for k, v in resp.cookies.items():
                 login_cookies[k] = v
 
-            # Stap 3: Bezoek business pagina voor subdomain cookies
-            cookie_str = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
-            resp2 = client.get(
-                f"{self.base_url}/finances/outstanding",
-                headers={
-                    "Accept": "text/html",
-                    "Cookie": cookie_str,
-                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                },
-            )
-
-            for k, v in resp2.cookies.items():
-                login_cookies[k] = v
-
-            # Volg redirect als nodig
-            if resp2.status_code in (302, 303):
-                redirect_url = resp2.headers.get("location", "")
-                if redirect_url:
-                    cookie_str = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
-                    resp3 = client.get(redirect_url, headers={
-                        "Accept": "text/html",
-                        "Cookie": cookie_str,
-                        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-                    })
-                    for k, v in resp3.cookies.items():
-                        login_cookies[k] = v
-
             # Bouw finale cookie string
             self._cookie = "; ".join(f"{k}={v}" for k, v in login_cookies.items())
-            self._xsrf = unquote(login_cookies.get("TRN-XSRF-TOKEN", login_cookies.get("XSRF-TOKEN", "")))
+            self._xsrf = unquote(login_cookies.get("TRN-XSRF-TOKEN", ""))
 
             if not self._xsrf:
                 print("[TraininClient] Geen XSRF token na login")
@@ -444,7 +422,7 @@ class TraininClient:
                 client.close()
                 return False
 
-            # Verifieer met een API call
+            # Stap 3: Verifieer met een API call
             test_resp = client.get(
                 f"{self.base_url}/clients/search",
                 headers={
@@ -453,7 +431,7 @@ class TraininClient:
                     "X-TRN-XSRF-TOKEN": self._xsrf,
                     "X-Auth-Guard": "staff",
                     "X-Requested-With": "XMLHttpRequest",
-                    "Referer": f"{self.base_url}/finances/outstanding",
+                    "Referer": f"{self.base_url}/calendar",
                 },
                 params={"search": "test"},
             )
@@ -503,7 +481,7 @@ class TraininClient:
                 if page.is_visible('input[name="remember"]'):
                     page.check('input[name="remember"]')
 
-                page.click('button:has-text("Login")')
+                page.click('button:has-text("Log in")')
 
                 try:
                     page.wait_for_url(f"**{self.subdomain}**", timeout=15000)
