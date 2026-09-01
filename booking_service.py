@@ -220,8 +220,18 @@ def _get_instructor_pid(name: str) -> Optional[str]:
     return None
 
 
-def _get_location_pid(key: str) -> str:
-    """Extract location PID from a slot key or return default."""
+def _get_activity_default_location(activity_pid: str) -> Optional[str]:
+    """Look up the default location PID for an activity from form config."""
+    config = _load_form_config()
+    options = config.get("activity", {}).get("options", [])
+    for opt in options:
+        if opt.get("value") == activity_pid:
+            return opt.get("defaultLocationPid")
+    return None
+
+
+def _get_location_pid(key: str, activity_pid: str = "") -> str:
+    """Extract location PID from a slot key, activity config, or default."""
     if key and "_" in key:
         loc_id_str = key.split("_")[0]
         try:
@@ -231,6 +241,10 @@ def _get_location_pid(key: str) -> str:
         except ValueError:
             if len(loc_id_str) >= 4 and loc_id_str[0].isalpha():
                 return loc_id_str
+    if activity_pid:
+        activity_loc = _get_activity_default_location(activity_pid)
+        if activity_loc:
+            return activity_loc
     return DEFAULT_LOCATION_PID
 
 
@@ -408,9 +422,9 @@ def create_session_in_trainin(
             logger.error("Geen activity PID gevonden voor listing_id=%s", listing_id)
             return None
 
-        # Map location
+        # Map location (uses activity's default if key doesn't specify one)
         key = session_data.get("key", "")
-        location_pid = _get_location_pid(key)
+        location_pid = _get_location_pid(key, activity_pid=activity_pid)
 
         payload = {
             "activityPid": activity_pid,
